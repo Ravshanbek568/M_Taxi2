@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:m_taksi/views/auth/client/settings_screen.dart';
+import 'package:m_taksi/views/auth/client/taxi_order_screen.dart'; // YANGI IMPORT QO'SHILDI
 
 class ClientHomeScreen extends StatefulWidget {
   const ClientHomeScreen({super.key});
@@ -266,8 +267,17 @@ class _ClientHomeScreenState extends State<ClientHomeScreen> {
           onTapUp: (_) => setState(() => isPressed = false),
           onTapCancel: () => setState(() => isPressed = false),
           onTap: () {
-             debugPrint('$label tanlandi');
-          },
+          // "Maxalliy taksi" tugmasi bosilganda taxi_order_screen ga o'tish
+          if (label == 'Maxalliy taksi') {
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (context) => const TaxiOrderScreen()),
+            );
+          } else {
+            // Boshqa tugmalar uchun oddiy debug print
+            debugPrint('$label tanlandi');
+          }
+        },
           child: AnimatedContainer(
             duration: const Duration(milliseconds: 100),
             transform: Matrix4.identity()..scale(isPressed ? 0.95 : 1.0),
