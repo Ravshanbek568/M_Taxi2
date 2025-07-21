@@ -1,0 +1,48 @@
+{
+  "project_info": {
+    "project_number": "921056756776",
+    "project_id": "maxaliy-taksi",
+    "storage_bucket": "maxaliy-taksi.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:921056756776:android:e1eff4a730d0691c04211d",
+        "android_client_info": {
+          "package_name": "com.example.m_taxi2"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyChf2moon7IO5GhyNRlgLEkKUFmTbEa9Kc"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:921056756776:android:4063d61b828f29b104211d",
+        "android_client_info": {
+          "package_name": "com.example.maxaliy_taksi"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyChf2moon7IO5GhyNRlgLEkKUFmTbEa9Kc"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

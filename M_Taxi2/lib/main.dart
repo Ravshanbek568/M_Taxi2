@@ -1,3 +1,4 @@
+import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:m_taksi/core/theme/colors.dart';
 import 'package:m_taksi/views/auth/entrepreneur/entrepreneur_business_type_screen.dart';
@@ -13,7 +14,9 @@ import 'package:m_taksi/views/home_screen.dart';
 import 'package:m_taksi/views/onboarding_screen.dart';
 import 'package:m_taksi/views/splash_screen.dart';
 
-void main() {
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await Firebase.initializeApp();
   runApp(const MyApp());
 }
 
