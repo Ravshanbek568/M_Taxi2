@@ -12,10 +12,13 @@ class TaxiOrderScreen extends StatefulWidget {
 
 class _TaxiOrderScreenState extends State<TaxiOrderScreen> {
   final Completer<GoogleMapController> _controllerGoogleMaps = Completer();
-  LatLng? _selectedLocation;
+  LatLng? _selectedLocationA;
+  LatLng? _selectedLocationB;
   LatLng? _currentUserLocation;
   bool _isLocationLoading = false;
+  bool _isDirectionInputOpen = false;
   Set<Marker> _markers = {};
+  final TextEditingController _searchController = TextEditingController();
 
   static const CameraPosition _kGooglePlex = CameraPosition(
     target: LatLng(40.8008333, 72.9881418),
@@ -25,8 +28,8 @@ class _TaxiOrderScreenState extends State<TaxiOrderScreen> {
   @override
   void initState() {
     super.initState();
-    _selectedLocation = _kGooglePlex.target;
-    _updateMarker();
+    _selectedLocationA = _kGooglePlex.target;
+    _updateMarkers();
     _getUserLocation();
   }
 
@@ -62,8 +65,8 @@ class _TaxiOrderScreenState extends State<TaxiOrderScreen> {
       if (!mounted) return;
       setState(() {
         _currentUserLocation = LatLng(position.latitude, position.longitude);
-        _selectedLocation = _currentUserLocation;
-        _updateMarker();
+        _selectedLocationA = _currentUserLocation;
+        _updateMarkers();
       });
 
       final GoogleMapController controller = await _controllerGoogleMaps.future;
@@ -82,19 +85,49 @@ class _TaxiOrderScreenState extends State<TaxiOrderScreen> {
     }
   }
 
-  void _updateMarker() {
+  void _updateMarkers() {
     setState(() {
-      _markers = {
-        Marker(
-          markerId: const MarkerId('meeting_point'),
-          position: _selectedLocation!,
-          icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueBlue),
-          anchor: const Offset(0.5, 1.0),
-          infoWindow: const InfoWindow(title: 'Uchrashuv joyi'),
-          zIndexInt: 2,
-          flat: true,
-        ),
-      };
+      _markers = {};
+      
+      if (_selectedLocationA != null) {
+        _markers.add(
+          Marker(
+            markerId: const MarkerId('point_A'),
+            position: _selectedLocationA!,
+            icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueRed),
+            anchor: const Offset(0.5, 1.0),
+            infoWindow: const InfoWindow(title: 'Qayerdan'),
+            zIndexInt: 2,
+            flat: true,
+          ),
+        );
+      }
+      
+      if (_selectedLocationB != null) {
+        _markers.add(
+          Marker(
+            markerId: const MarkerId('point_B'),
+            position: _selectedLocationB!,
+            icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueBlue),
+            anchor: const Offset(0.5, 1.0),
+            infoWindow: const InfoWindow(title: 'Qayerga'),
+            zIndexInt: 2,
+            flat: true,
+          ),
+        );
+      }
+    });
+  }
+
+  void _openDirectionInput() {
+    setState(() {
+      _isDirectionInputOpen = true;
+    });
+  }
+
+  void _closeDirectionInput() {
+    setState(() {
+      _isDirectionInputOpen = false;
     });
   }
 
@@ -105,21 +138,23 @@ class _TaxiOrderScreenState extends State<TaxiOrderScreen> {
         children: [
           GoogleMap(
             mapType: MapType.normal,
-            myLocationEnabled: true,  // Standart lokatsiya ko'rsatuvchi yoqilgan
-            myLocationButtonEnabled: false,  // Standart joylashuv tugmasi o'chirilgan
+            myLocationEnabled: true,
+            myLocationButtonEnabled: false,
             initialCameraPosition: _kGooglePlex,
             markers: _markers,
             onMapCreated: (GoogleMapController controller) {
               _controllerGoogleMaps.complete(controller);
             },
             onCameraMove: (CameraPosition position) {
-              setState(() {
-                _selectedLocation = position.target;
-                _updateMarker();
-              });
+              if (_isDirectionInputOpen && _selectedLocationB == null) {
+                setState(() {
+                  _selectedLocationB = position.target;
+                  _updateMarkers();
+                });
+              }
             },
             onCameraIdle: () {
-              debugPrint("Tanlangan joy: ${_selectedLocation?.latitude}, ${_selectedLocation?.longitude}");
+              debugPrint("Tanlangan joy: ${_selectedLocationA?.latitude}, ${_selectedLocationA?.longitude}");
             },
           ),
 
@@ -140,60 +175,198 @@ class _TaxiOrderScreenState extends State<TaxiOrderScreen> {
             ),
           ),
 
-          // Pastki panel (asl holatida qoldirilgan)
-          Align(
-            alignment: Alignment.bottomCenter,
-            child: Container(
-              decoration: BoxDecoration(
-                color: Colors.blue.shade600,
-                borderRadius: const BorderRadius.vertical(
-                  top: Radius.circular(30),
-                ),
-                boxShadow: [
-                  BoxShadow(
-                    color: const Color(0x33000000),
-                    blurRadius: 8,
-                    offset: const Offset(0, -2),
-                  ),
-                ],
-              ),
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const SizedBox(height: 10),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      _buildButton(Icons.wifi, "Signal jo'natish"),
-                      _buildButton(Icons.local_taxi, "Avtomatik taksi"),
-                      _buildButton(Icons.groups, "Haydovchilar"),
+          // Search bar (top)
+          if (_isDirectionInputOpen)
+            Positioned(
+              top: 30,
+              left: 0,
+              right: 0,
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(20),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withAlpha((0.2 * 255).round()),
+                        blurRadius: 8,
+                        offset: const Offset(0, 2),
+                      ),
                     ],
                   ),
-                  const SizedBox(height: 20),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
-                    decoration: BoxDecoration(
-                      color: Colors.grey.shade200,
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    child: const TextField(
-                      decoration: InputDecoration(
-                        hintText: "Yo'nalishni kiriting",
-                        border: InputBorder.none,
+                  child: Row(
+                    children: [
+                      IconButton(
+                        icon: const Icon(Icons.arrow_back),
+                        onPressed: _closeDirectionInput,
                       ),
-                    ),
+                      Expanded(
+                        child: TextField(
+                          controller: _searchController,
+                          decoration: const InputDecoration(
+                            hintText: "Manzilni kiriting",
+                            border: InputBorder.none,
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
-                ],
+                ),
               ),
             ),
+
+          // Pastki panel
+          if (!_isDirectionInputOpen)
+            Align(
+              alignment: Alignment.bottomCenter,
+              child: Container(
+                decoration: BoxDecoration(
+                  color: Colors.blue.shade600,
+                  borderRadius: const BorderRadius.vertical(
+                    top: Radius.circular(30),
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: const Color(0x33000000),
+                      blurRadius: 8,
+                      offset: const Offset(0, -2),
+                    ),
+                  ],
+                ),
+                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const SizedBox(height: 10),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        _buildButton(Icons.wifi, "Signal jo'natish", enabled: false),
+                        _buildButton(Icons.local_taxi, "Avtomatik taksi", enabled: false),
+                        _buildButton(Icons.groups, "Haydovchilar", enabled: false),
+                      ],
+                    ),
+                    const SizedBox(height: 20),
+                    GestureDetector(
+                      onTap: _openDirectionInput,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                        decoration: BoxDecoration(
+                          color: Colors.grey.shade200,
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                        child: Row(
+                          children: [
+                            Expanded(
+                              child: Text(
+                                "Yo'nalishni kiriting",
+                                style: TextStyle(
+                                  color: Colors.grey.shade600,
+                                ),
+                              ),
+                            ),
+                            const Icon(Icons.arrow_forward, color: Colors.blue),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+
+          // Direction input bottom panel
+          if (_isDirectionInputOpen)
+            Align(
+              alignment: Alignment.bottomCenter,
+              child: Container(
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: const BorderRadius.vertical(
+                    top: Radius.circular(30),
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: const Color(0x33000000),
+                      blurRadius: 8,
+                      offset: const Offset(0, -2),
+                    ),
+                  ],
+                ),
+                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    _buildLocationInput("Qayerdan", _selectedLocationA != null ? "Belgilangan" : "Belgilanmagan"),
+                    const SizedBox(height: 16),
+                    _buildLocationInput("Qayerga", _selectedLocationB != null ? "Belgilangan" : "Belgilanmagan"),
+                    const SizedBox(height: 16),
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.blue,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(20),
+                          ),
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                        ),
+                        onPressed: () {
+                          // Handle "Boshlash" button press
+                        },
+                        child: const Text(
+                          "Boshlash",
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildLocationInput(String title, String subtitle) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      decoration: BoxDecoration(
+        color: Colors.grey.shade100,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Row(
+        children: [
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                title,
+                style: const TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              Text(
+                subtitle,
+                style: TextStyle(
+                  color: Colors.grey.shade600,
+                ),
+              ),
+            ],
           ),
         ],
       ),
     );
   }
 
-  Column _buildButton(IconData icon, String label, {VoidCallback? onPressed}) {
+  Column _buildButton(IconData icon, String label, {bool enabled = true}) {
     return Column(
       children: [
         IconButton(
@@ -201,20 +374,31 @@ class _TaxiOrderScreenState extends State<TaxiOrderScreen> {
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
               shape: BoxShape.circle,
-              color: Colors.white.withAlpha(51),
-              border: Border.all(color: Colors.white, width: 4),
+              color: enabled ? Colors.white.withAlpha(51) : Colors.white.withAlpha(25),
+              border: Border.all(
+                color: enabled ? Colors.white : Colors.white.withAlpha((0.5 * 255).round()),
+                width: 4,
+              ),
             ),
-            child: Icon(icon, size: 30, color: Colors.white),
+            child: Icon(
+              icon,
+              size: 30,
+              color: enabled ? Colors.white : Colors.white.withAlpha((0.5 * 255).round()),
+            ),
           ),
-          onPressed: onPressed,
+          onPressed: enabled ? () {} : null,
         ),
         const SizedBox(height: 4),
-        Text(label, style: const TextStyle(color: Colors.white)),
+        Text(
+          label,
+          style: TextStyle(
+            color: enabled ? Colors.white : Colors.white.withAlpha((0.5 * 255).round()),
+          ),
+        ),
       ],
     );
   }
 }
-
 
 
 
