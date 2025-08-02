@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:geolocator/geolocator.dart';
 
 class TaxiOrderScreen extends StatefulWidget {
   const TaxiOrderScreen({super.key});
@@ -12,8 +13,8 @@ class TaxiOrderScreen extends StatefulWidget {
 class _TaxiOrderScreenState extends State<TaxiOrderScreen> {
   final Completer<GoogleMapController> _controllerGoogleMaps = Completer();
   LatLng? _selectedLocation;
-  bool _isMarkerAnimating = false;
-  Timer? _animationTimer;
+  LatLng? _currentUserLocation;
+  bool _isLocationLoading = false;
   Set<Marker> _markers = {};
 
   static const CameraPosition _kGooglePlex = CameraPosition(
@@ -26,40 +27,71 @@ class _TaxiOrderScreenState extends State<TaxiOrderScreen> {
     super.initState();
     _selectedLocation = _kGooglePlex.target;
     _updateMarker();
+    _getUserLocation();
   }
 
-  @override
-  void dispose() {
-    _animationTimer?.cancel();
-    super.dispose();
-  }
+  Future<void> _getUserLocation() async {
+    if (!mounted) return;
+    setState(() => _isLocationLoading = true);
 
-  void _startMarkerAnimation() {
-    if (_isMarkerAnimating) return;
-    
-    setState(() => _isMarkerAnimating = true);
-    
-    _animationTimer?.cancel();
-    _animationTimer = Timer(const Duration(seconds: 2), () {
-      if (mounted) {
-        setState(() => _isMarkerAnimating = false);
+    bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
+    if (!serviceEnabled) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Lokatsiya xizmati yoqilmagan!')),
+      );
+      setState(() => _isLocationLoading = false);
+      return;
+    }
+
+    LocationPermission permission = await Geolocator.checkPermission();
+    if (permission == LocationPermission.denied) {
+      permission = await Geolocator.requestPermission();
+      if (permission == LocationPermission.denied) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Lokatsiya ruxsati berilmadi!')),
+        );
+        setState(() => _isLocationLoading = false);
+        return;
       }
-    });
+    }
+
+    try {
+      Position position = await Geolocator.getCurrentPosition();
+      if (!mounted) return;
+      setState(() {
+        _currentUserLocation = LatLng(position.latitude, position.longitude);
+        _selectedLocation = _currentUserLocation;
+        _updateMarker();
+      });
+
+      final GoogleMapController controller = await _controllerGoogleMaps.future;
+      controller.animateCamera(
+        CameraUpdate.newLatLngZoom(_currentUserLocation!, 17.0),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Joylashuvni olishda xato: $e')),
+      );
+    } finally {
+      if (mounted) {
+        setState(() => _isLocationLoading = false);
+      }
+    }
   }
 
   void _updateMarker() {
     setState(() {
       _markers = {
         Marker(
-          markerId: MarkerId('meeting_point'),
+          markerId: const MarkerId('meeting_point'),
           position: _selectedLocation!,
           icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueBlue),
-          anchor: Offset(0.5, 1.0), // Marker oyog'ining pastki qismi joyni belgilaydi
-          infoWindow: InfoWindow(title: 'Uchrashuv joyi'),
-          onTap: () {
-            // Marker bosilganda amal
-          },
-           zIndexInt: 2,
+          anchor: const Offset(0.5, 1.0),
+          infoWindow: const InfoWindow(title: 'Uchrashuv joyi'),
+          zIndexInt: 2,
           flat: true,
         ),
       };
@@ -73,41 +105,42 @@ class _TaxiOrderScreenState extends State<TaxiOrderScreen> {
         children: [
           GoogleMap(
             mapType: MapType.normal,
-            myLocationEnabled: true,
-            myLocationButtonEnabled: true,
+            myLocationEnabled: true,  // Standart lokatsiya ko'rsatuvchi yoqilgan
+            myLocationButtonEnabled: false,  // Standart joylashuv tugmasi o'chirilgan
             initialCameraPosition: _kGooglePlex,
             markers: _markers,
             onMapCreated: (GoogleMapController controller) {
               _controllerGoogleMaps.complete(controller);
             },
             onCameraMove: (CameraPosition position) {
-              _startMarkerAnimation();
               setState(() {
                 _selectedLocation = position.target;
                 _updateMarker();
               });
             },
             onCameraIdle: () {
-              // Xarita harakati to'xtaganda markerning pastki qismidagi joyni tanlash
               debugPrint("Tanlangan joy: ${_selectedLocation?.latitude}, ${_selectedLocation?.longitude}");
             },
           ),
 
-          // Animatsion halqa effekti
-          if (_isMarkerAnimating)
-            Center(
-              child: Container(
-                width: 60,
-                height: 60,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: Colors.blue.withAlpha((0.2 * 255).toInt()),
-                  border: Border.all(color: Colors.blue, width: 2),
-                ),
-              ),
+          if (_isLocationLoading)
+            const Center(
+              child: CircularProgressIndicator(),
             ),
 
-          // Pastki panel
+          // Joylashuv tugmasi (yuqori o'ng burchakda)
+          Positioned(
+            top: 30,
+            right: 15,
+            child: FloatingActionButton(
+              mini: true,
+              backgroundColor: Colors.white,
+              onPressed: _getUserLocation,
+              child: const Icon(Icons.gps_fixed, color: Colors.blue),
+            ),
+          ),
+
+          // Pastki panel (asl holatida qoldirilgan)
           Align(
             alignment: Alignment.bottomCenter,
             child: Container(
@@ -160,17 +193,20 @@ class _TaxiOrderScreenState extends State<TaxiOrderScreen> {
     );
   }
 
-  Column _buildButton(IconData icon, String label) {
+  Column _buildButton(IconData icon, String label, {VoidCallback? onPressed}) {
     return Column(
       children: [
-        Container(
-          padding: const EdgeInsets.all(12),
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            color: Colors.white.withAlpha(51),
-            border: Border.all(color: Colors.white, width: 4),
+        IconButton(
+          icon: Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: Colors.white.withAlpha(51),
+              border: Border.all(color: Colors.white, width: 4),
+            ),
+            child: Icon(icon, size: 30, color: Colors.white),
           ),
-          child: Icon(icon, size: 30, color: Colors.white),
+          onPressed: onPressed,
         ),
         const SizedBox(height: 4),
         Text(label, style: const TextStyle(color: Colors.white)),
