@@ -62,8 +62,8 @@ class _YandexGoShadowEffectState extends State<YandexGoShadowEffect> {
             boxShadow: [
               BoxShadow(
                 color: widget.shadowColor.withAlpha((_shadowOpacityAnimation.value * 255).round()),
-                blurRadius: 8,
-                spreadRadius: 1,
+                blurRadius: 3,
+                spreadRadius: 05,
               ),
             ],
           ),
@@ -233,6 +233,11 @@ class _TaxiOrderScreenState extends State<TaxiOrderScreen> with SingleTickerProv
             ),
           ),
 
+
+          
+
+
+
           // Maxsus tugma: yuqori o‘ng burchakdan 30px pastda
           Positioned(
             top: 30,
@@ -244,6 +249,12 @@ class _TaxiOrderScreenState extends State<TaxiOrderScreen> with SingleTickerProv
             ),
           ),
         ],
+
+        
+
+       
+
+        
       ),
     );
   }
