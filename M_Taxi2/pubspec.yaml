@@ -29,6 +29,8 @@ dependencies:
   # Qo‘shiladigan yangi paketlar:
   flutter_google_places_sdk: ^0.4.2+1
   google_api_headers: ^4.5.7
+  http: ^1.4.0
+  
   # location: ^8.0.1
   # permission_handler: ^10.4.4  # Eng yangi versiyasi
   # image_picker: ^0.8.7+4

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:m_taksi/core/theme/colors.dart'; // Loyihaning ranglarini olish uchun
-import 'package:m_taksi/views/auth/client/client_phone_screen.dart'; // Mijoz telefon ekrani
+// import 'package:m_taksi/views/auth/client/client_phone_screen.dart'; // Mijoz telefon ekrani
+import 'package:m_taksi/views/auth/client/main_navigation/main_navigation.dart';
 import 'package:m_taksi/views/auth/entrepreneur/entrepreneur_business_type_screen.dart'; // Tadbirkor biznes turi ekrani
 
 class RoleSelectScreen extends StatelessWidget {
@@ -51,7 +52,8 @@ class RoleSelectScreen extends StatelessWidget {
                           Navigator.push( // Yangi ekranga o'tish
                             context,
                             MaterialPageRoute(
-                              builder: (_) => const ClientPhoneScreen(), // Mijoz telefon ekrani
+                              // builder: (_) => const ClientPhoneScreen(), // Mijoz telefon ekrani
+                              builder: (_) => const MainNavigationScreen(),
                             ),
                           );
                         },

@@ -3,6 +3,77 @@ import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:geolocator/geolocator.dart';
 
+/// YandexGoShadowEffect widgeti: marker ostidagi animatsiyali soya effekti
+class YandexGoShadowEffect extends StatefulWidget {
+  final double shadowSize;   // Soyaning boshlang‘ich kengligi
+  final Color shadowColor;   // Soyaning rangi
+  final AnimationController animationController; // Tashqi animation controller
+  const YandexGoShadowEffect({
+    super.key,
+    required this.shadowSize,
+    required this.shadowColor,
+    required this.animationController,
+  });
+
+  @override
+  State<YandexGoShadowEffect> createState() => _YandexGoShadowEffectState();
+}
+
+class _YandexGoShadowEffectState extends State<YandexGoShadowEffect> {
+  late Animation<double> _shadowSizeAnimation;
+  late Animation<double> _shadowOpacityAnimation;
+
+  final double _maxShadowSize = 60.0;
+  final double _minShadowOpacity = 0.1;
+
+  @override
+  void initState() {
+    super.initState();
+
+    // Soyaning kengayishi va tiniqligi animatsiyasi
+    _shadowSizeAnimation = Tween<double>(
+      begin: widget.shadowSize,
+      end: _maxShadowSize,
+    ).animate(CurvedAnimation(
+      parent: widget.animationController,
+      curve: Curves.easeOut,
+    ));
+
+    _shadowOpacityAnimation = Tween<double>(
+      begin: 0.3,
+      end: _minShadowOpacity,
+    ).animate(CurvedAnimation(
+      parent: widget.animationController,
+      curve: Curves.easeOut,
+    ));
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: widget.animationController,
+      builder: (context, _) {
+        return Container(
+          width: _shadowSizeAnimation.value,
+          height: _shadowSizeAnimation.value / 4,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            color: widget.shadowColor.withAlpha((_shadowOpacityAnimation.value * 255).toInt()),
+            boxShadow: [
+              BoxShadow(
+                color: widget.shadowColor.withAlpha((_shadowOpacityAnimation.value * 255).round()),
+                blurRadius: 8,
+                spreadRadius: 1,
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+}
+
+/// Asosiy TaxiOrderScreen widgeti
 class TaxiOrderScreen extends StatefulWidget {
   const TaxiOrderScreen({super.key});
 
@@ -10,17 +81,21 @@ class TaxiOrderScreen extends StatefulWidget {
   State<TaxiOrderScreen> createState() => _TaxiOrderScreenState();
 }
 
-class _TaxiOrderScreenState extends State<TaxiOrderScreen> {
+class _TaxiOrderScreenState extends State<TaxiOrderScreen> with SingleTickerProviderStateMixin {
   final Completer<GoogleMapController> _controllerGoogleMaps = Completer();
-  LatLng? _selectedLocationA;
-  LatLng? _selectedLocationB;
-  LatLng? _currentUserLocation;
-  bool _isLocationLoading = false;
-  bool _isDirectionInputOpen = false;
-  Set<Marker> _markers = {};
-  final TextEditingController _searchController = TextEditingController();
 
-  static const CameraPosition _kGooglePlex = CameraPosition(
+  // Foydalanuvchi joylashuvi uchun LatLng
+  LatLng? _currentLocation;
+
+  // Xarita harakati davomida markerning ko‘tarilish holati
+  bool _isMapMoving = false;
+
+  // AnimationController marker va soyani animatsiyasi uchun
+  late AnimationController _animationController;
+  late Animation<double> _liftAnimation;
+
+  // Dastlabki kamera joylashuvi (Andijon)
+  static const CameraPosition _initialCameraPosition = CameraPosition(
     target: LatLng(40.8008333, 72.9881418),
     zoom: 17.0,
   );
@@ -28,22 +103,32 @@ class _TaxiOrderScreenState extends State<TaxiOrderScreen> {
   @override
   void initState() {
     super.initState();
-    _selectedLocationA = _kGooglePlex.target;
-    _updateMarkers();
-    _getUserLocation();
+
+    // Marker ko‘tarilish animatsiyasi uchun controller va tween
+    _animationController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 300),
+    );
+
+    _liftAnimation = Tween<double>(begin: 0, end: 15).animate(
+      CurvedAnimation(parent: _animationController, curve: Curves.easeOut),
+    );
+
+    // Foydalanuvchi joyini olish
+    _determinePosition();
   }
 
-  Future<void> _getUserLocation() async {
-    if (!mounted) return;
-    setState(() => _isLocationLoading = true);
+  @override
+  void dispose() {
+    _animationController.dispose();
+    super.dispose();
+  }
 
+  /// Foydalanuvchi joylashuvini aniqlash
+  Future<void> _determinePosition() async {
     bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
     if (!serviceEnabled) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Lokatsiya xizmati yoqilmagan!')),
-      );
-      setState(() => _isLocationLoading = false);
+      // GPS o‘chirilgan bo‘lsa
       return;
     }
 
@@ -51,84 +136,48 @@ class _TaxiOrderScreenState extends State<TaxiOrderScreen> {
     if (permission == LocationPermission.denied) {
       permission = await Geolocator.requestPermission();
       if (permission == LocationPermission.denied) {
-        if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Lokatsiya ruxsati berilmadi!')),
-        );
-        setState(() => _isLocationLoading = false);
+        // Ruxsat berilmasa
         return;
       }
     }
+    if (permission == LocationPermission.deniedForever) {
+      return;
+    }
 
-    try {
-      Position position = await Geolocator.getCurrentPosition();
-      if (!mounted) return;
-      setState(() {
-        _currentUserLocation = LatLng(position.latitude, position.longitude);
-        _selectedLocationA = _currentUserLocation;
-        _updateMarkers();
-      });
+    Position position = await Geolocator.getCurrentPosition(
+      locationSettings: const LocationSettings(accuracy: LocationAccuracy.high),
+    );
 
-      final GoogleMapController controller = await _controllerGoogleMaps.future;
-      controller.animateCamera(
-        CameraUpdate.newLatLngZoom(_currentUserLocation!, 17.0),
-      );
-    } catch (e) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Joylashuvni olishda xato: $e')),
-      );
-    } finally {
-      if (mounted) {
-        setState(() => _isLocationLoading = false);
-      }
+    _currentLocation = LatLng(position.latitude, position.longitude);
+
+    final controller = await _controllerGoogleMaps.future;
+    controller.animateCamera(CameraUpdate.newCameraPosition(CameraPosition(target: _currentLocation!, zoom: 17)));
+
+    setState(() {});
+  }
+
+  /// Xarita harakati boshlanganda chaqiriladi
+  void _onCameraMove() {
+    if (!_isMapMoving) {
+      _isMapMoving = true;
+      _animationController.forward(); // Marker tepaga ko‘tariladi va soya kattalashadi
     }
   }
 
-  void _updateMarkers() {
-    setState(() {
-      _markers = {};
-      
-      if (_selectedLocationA != null) {
-        _markers.add(
-          Marker(
-            markerId: const MarkerId('point_A'),
-            position: _selectedLocationA!,
-            icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueRed),
-            anchor: const Offset(0.5, 1.0),
-            infoWindow: const InfoWindow(title: 'Qayerdan'),
-            zIndexInt: 2,
-            flat: true,
-          ),
-        );
-      }
-      
-      if (_selectedLocationB != null) {
-        _markers.add(
-          Marker(
-            markerId: const MarkerId('point_B'),
-            position: _selectedLocationB!,
-            icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueBlue),
-            anchor: const Offset(0.5, 1.0),
-            infoWindow: const InfoWindow(title: 'Qayerga'),
-            zIndexInt: 2,
-            flat: true,
-          ),
-        );
-      }
-    });
+  /// Xarita harakati tugaganda chaqiriladi
+  void _onCameraIdle() {
+    if (_isMapMoving) {
+      _isMapMoving = false;
+      _animationController.reverse(); // Marker pastga tushadi va soya kichrayadi
+    }
   }
 
-  void _openDirectionInput() {
-    setState(() {
-      _isDirectionInputOpen = true;
-    });
-  }
+  /// Maxsus tugma bosilganda foydalanuvchi joyiga xaritani olib borish
+  Future<void> _goToCurrentLocation() async {
+    if (_currentLocation == null) return;
 
-  void _closeDirectionInput() {
-    setState(() {
-      _isDirectionInputOpen = false;
-    });
+    final controller = await _controllerGoogleMaps.future;
+    controller.animateCamera(CameraUpdate.newCameraPosition(CameraPosition(target: _currentLocation!, zoom: 17)));
   }
 
   @override
@@ -136,284 +185,69 @@ class _TaxiOrderScreenState extends State<TaxiOrderScreen> {
     return Scaffold(
       body: Stack(
         children: [
+          // Google Maps widget
           GoogleMap(
             mapType: MapType.normal,
+            initialCameraPosition: _initialCameraPosition,
             myLocationEnabled: true,
-            myLocationButtonEnabled: false,
-            initialCameraPosition: _kGooglePlex,
-            markers: _markers,
-            onMapCreated: (GoogleMapController controller) {
-              _controllerGoogleMaps.complete(controller);
-            },
-            onCameraMove: (CameraPosition position) {
-              if (_isDirectionInputOpen && _selectedLocationB == null) {
-                setState(() {
-                  _selectedLocationB = position.target;
-                  _updateMarkers();
-                });
-              }
-            },
-            onCameraIdle: () {
-              debugPrint("Tanlangan joy: ${_selectedLocationA?.latitude}, ${_selectedLocationA?.longitude}");
-            },
+            myLocationButtonEnabled: false, // O‘zimiz tugma qilamiz
+            onMapCreated: (controller) => _controllerGoogleMaps.complete(controller),
+            onCameraMove: (position) => _onCameraMove(),
+            onCameraIdle: () => _onCameraIdle(),
           ),
 
-          if (_isLocationLoading)
-            const Center(
-              child: CircularProgressIndicator(),
-            ),
+          // Marker va soyani animatsiya bilan markazda joylash
+          Center(
+            child: AnimatedBuilder(
+              animation: _animationController,
+              builder: (context, child) {
+                return Padding(
+                  // Marker balandligining ko‘tarilishi uchun padding
+                  padding: EdgeInsets.only(bottom: _liftAnimation.value + 65), // 65 marker balandligi yarmi + soyani joylashuvi
+                  child: Stack(
+                    alignment: Alignment.topCenter,
+                    children: [
+                      // Marker rasmi (men.png)
+                      Transform.translate(
+                        offset: Offset(0, -_liftAnimation.value), // Markerni ko‘tarish animatsiyasi
+                        child: Image.asset(
+                          'assets/images/men.png',
+                          width: 80,
+                          height: 80,
+                        ),
+                      ),
 
-          // Joylashuv tugmasi (yuqori o'ng burchakda)
+                      // Soyani marker tayoqchasining ostiga joylash va animatsiya qilish
+                      Positioned(
+                        bottom: 0, // marker ostiga joylash
+                        child: YandexGoShadowEffect(
+                          shadowSize: 40,
+                          shadowColor: Colors.black,
+                          animationController: _animationController,
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              },
+            ),
+          ),
+
+          // Maxsus tugma: yuqori o‘ng burchakdan 30px pastda
           Positioned(
             top: 30,
-            right: 15,
+            right: 20,
             child: FloatingActionButton(
-              mini: true,
+              onPressed: _goToCurrentLocation,
               backgroundColor: Colors.white,
-              onPressed: _getUserLocation,
-              child: const Icon(Icons.gps_fixed, color: Colors.blue),
+              child: const Icon(Icons.my_location, color: Colors.blue),
             ),
-          ),
-
-          // Search bar (top)
-          if (_isDirectionInputOpen)
-            Positioned(
-              top: 30,
-              left: 0,
-              right: 0,
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                child: Container(
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(20),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withAlpha((0.2 * 255).round()),
-                        blurRadius: 8,
-                        offset: const Offset(0, 2),
-                      ),
-                    ],
-                  ),
-                  child: Row(
-                    children: [
-                      IconButton(
-                        icon: const Icon(Icons.arrow_back),
-                        onPressed: _closeDirectionInput,
-                      ),
-                      Expanded(
-                        child: TextField(
-                          controller: _searchController,
-                          decoration: const InputDecoration(
-                            hintText: "Manzilni kiriting",
-                            border: InputBorder.none,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-
-          // Pastki panel
-          if (!_isDirectionInputOpen)
-            Align(
-              alignment: Alignment.bottomCenter,
-              child: Container(
-                decoration: BoxDecoration(
-                  color: Colors.blue.shade600,
-                  borderRadius: const BorderRadius.vertical(
-                    top: Radius.circular(30),
-                  ),
-                  boxShadow: [
-                    BoxShadow(
-                      color: const Color(0x33000000),
-                      blurRadius: 8,
-                      offset: const Offset(0, -2),
-                    ),
-                  ],
-                ),
-                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const SizedBox(height: 10),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        _buildButton(Icons.wifi, "Signal jo'natish", enabled: false),
-                        _buildButton(Icons.local_taxi, "Avtomatik taksi", enabled: false),
-                        _buildButton(Icons.groups, "Haydovchilar", enabled: false),
-                      ],
-                    ),
-                    const SizedBox(height: 20),
-                    GestureDetector(
-                      onTap: _openDirectionInput,
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                        decoration: BoxDecoration(
-                          color: Colors.grey.shade200,
-                          borderRadius: BorderRadius.circular(20),
-                        ),
-                        child: Row(
-                          children: [
-                            Expanded(
-                              child: Text(
-                                "Yo'nalishni kiriting",
-                                style: TextStyle(
-                                  color: Colors.grey.shade600,
-                                ),
-                              ),
-                            ),
-                            const Icon(Icons.arrow_forward, color: Colors.blue),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-
-          // Direction input bottom panel
-          if (_isDirectionInputOpen)
-            Align(
-              alignment: Alignment.bottomCenter,
-              child: Container(
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: const BorderRadius.vertical(
-                    top: Radius.circular(30),
-                  ),
-                  boxShadow: [
-                    BoxShadow(
-                      color: const Color(0x33000000),
-                      blurRadius: 8,
-                      offset: const Offset(0, -2),
-                    ),
-                  ],
-                ),
-                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    _buildLocationInput("Qayerdan", _selectedLocationA != null ? "Belgilangan" : "Belgilanmagan"),
-                    const SizedBox(height: 16),
-                    _buildLocationInput("Qayerga", _selectedLocationB != null ? "Belgilangan" : "Belgilanmagan"),
-                    const SizedBox(height: 16),
-                    SizedBox(
-                      width: double.infinity,
-                      child: ElevatedButton(
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.blue,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(20),
-                          ),
-                          padding: const EdgeInsets.symmetric(vertical: 16),
-                        ),
-                        onPressed: () {
-                          // Handle "Boshlash" button press
-                        },
-                        child: const Text(
-                          "Boshlash",
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildLocationInput(String title, String subtitle) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      decoration: BoxDecoration(
-        color: Colors.grey.shade100,
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Row(
-        children: [
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                title,
-                style: const TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              Text(
-                subtitle,
-                style: TextStyle(
-                  color: Colors.grey.shade600,
-                ),
-              ),
-            ],
           ),
         ],
       ),
-    );
-  }
-
-  Column _buildButton(IconData icon, String label, {bool enabled = true}) {
-    return Column(
-      children: [
-        IconButton(
-          icon: Container(
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: enabled ? Colors.white.withAlpha(51) : Colors.white.withAlpha(25),
-              border: Border.all(
-                color: enabled ? Colors.white : Colors.white.withAlpha((0.5 * 255).round()),
-                width: 4,
-              ),
-            ),
-            child: Icon(
-              icon,
-              size: 30,
-              color: enabled ? Colors.white : Colors.white.withAlpha((0.5 * 255).round()),
-            ),
-          ),
-          onPressed: enabled ? () {} : null,
-        ),
-        const SizedBox(height: 4),
-        Text(
-          label,
-          style: TextStyle(
-            color: enabled ? Colors.white : Colors.white.withAlpha((0.5 * 255).round()),
-          ),
-        ),
-      ],
     );
   }
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 
