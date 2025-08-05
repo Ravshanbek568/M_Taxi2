@@ -180,84 +180,72 @@ class _TaxiOrderScreenState extends State<TaxiOrderScreen> with SingleTickerProv
     controller.animateCamera(CameraUpdate.newCameraPosition(CameraPosition(target: _currentLocation!, zoom: 17)));
   }
 
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      body: Stack(
-        children: [
-          // Google Maps widget
-          GoogleMap(
-            mapType: MapType.normal,
-            initialCameraPosition: _initialCameraPosition,
-            myLocationEnabled: true,
-            myLocationButtonEnabled: false, // O‘zimiz tugma qilamiz
-            onMapCreated: (controller) => _controllerGoogleMaps.complete(controller),
-            onCameraMove: (position) => _onCameraMove(),
-            onCameraIdle: () => _onCameraIdle(),
-          ),
+ @override
+Widget build(BuildContext context) {
+  return Scaffold(
+    body: Stack(
+      children: [
+        GoogleMap(
+          mapType: MapType.normal,
+          initialCameraPosition: _initialCameraPosition,
+          myLocationEnabled: true,
+          myLocationButtonEnabled: false,
+          onMapCreated: (controller) => _controllerGoogleMaps.complete(controller),
+          onCameraMove: (position) => _onCameraMove(),
+          onCameraIdle: () => _onCameraIdle(),
+          padding: EdgeInsets.only(
+          bottom: MediaQuery.of(context).size.height / 2.5, // 2 o‘rniga 1.8
+           ),
+           ),
 
-          // Marker va soyani animatsiya bilan markazda joylash
-          Center(
-            child: AnimatedBuilder(
-              animation: _animationController,
-              builder: (context, child) {
-                return Padding(
-                  // Marker balandligining ko‘tarilishi uchun padding
-                  padding: EdgeInsets.only(bottom: _liftAnimation.value + 65), // 65 marker balandligi yarmi + soyani joylashuvi
-                  child: Stack(
-                    alignment: Alignment.topCenter,
-                    children: [
-                      // Marker rasmi (men.png)
-                      Transform.translate(
-                        offset: Offset(0, -_liftAnimation.value), // Markerni ko‘tarish animatsiyasi
-                        child: Image.asset(
-                          'assets/images/men.png',
-                          width: 80,
-                          height: 80,
-                        ),
+        // Marker va soya - ekranning yuqori yarmi markazida
+        Align(
+          alignment: Alignment(0.0, -0.5), // -0.3 = yuqori yarmining markaziga yaqin
+          child: AnimatedBuilder(
+            animation: _animationController,
+            builder: (context, child) {
+              return Padding(
+                padding: EdgeInsets.only(bottom: _liftAnimation.value + 65),
+                child: Stack(
+                  alignment: Alignment.topCenter,
+                  children: [
+                    Transform.translate(
+                      offset: Offset(0, -_liftAnimation.value),
+                      child: Image.asset(
+                        'assets/images/men.png',
+                        width: 80,
+                        height: 80,
                       ),
-
-                      // Soyani marker tayoqchasining ostiga joylash va animatsiya qilish
-                      Positioned(
-                        bottom: 0, // marker ostiga joylash
-                        child: YandexGoShadowEffect(
-                          shadowSize: 40,
-                          shadowColor: Colors.black,
-                          animationController: _animationController,
-                        ),
+                    ),
+                    Positioned(
+                      bottom: 0,
+                      child: YandexGoShadowEffect(
+                        shadowSize: 40,
+                        shadowColor: Colors.black,
+                        animationController: _animationController,
                       ),
-                    ],
-                  ),
-                );
-              },
-            ),
+                    ),
+                  ],
+                ),
+              );
+            },
           ),
+        ),
 
-
-          
-
-
-
-          // Maxsus tugma: yuqori o‘ng burchakdan 30px pastda
-          Positioned(
-            top: 30,
-            right: 20,
-            child: FloatingActionButton(
-              onPressed: _goToCurrentLocation,
-              backgroundColor: Colors.white,
-              child: const Icon(Icons.my_location, color: Colors.blue),
-            ),
+        // My Location tugmasi
+        Positioned(
+          top: 30,
+          right: 20,
+          child: FloatingActionButton(
+            onPressed: _goToCurrentLocation,
+            backgroundColor: Colors.white,
+            child: const Icon(Icons.my_location, color: Colors.blue),
           ),
-        ],
-
-        
-
-       
-
-        
-      ),
-    );
-  }
+        ),
+      ],
+    ),
+  );
+}
 }
 
 
