@@ -3,11 +3,12 @@ import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:geolocator/geolocator.dart';
 
-/// YandexGoShadowEffect widgeti: marker ostidagi animatsiyali soya effekti
+/// MARKER OSTIDAGI ANIMATSIYALI SOYA WIDGETI
 class YandexGoShadowEffect extends StatefulWidget {
-  final double shadowSize;   // Soyaning boshlang‘ich kengligi
-  final Color shadowColor;   // Soyaning rangi
-  final AnimationController animationController; // Tashqi animation controller
+  final double shadowSize;
+  final Color shadowColor;
+  final AnimationController animationController;
+
   const YandexGoShadowEffect({
     super.key,
     required this.shadowSize,
@@ -30,7 +31,7 @@ class _YandexGoShadowEffectState extends State<YandexGoShadowEffect> {
   void initState() {
     super.initState();
 
-    // Soyaning kengayishi va tiniqligi animatsiyasi
+    // Kengayuvchi soya animatsiyasi
     _shadowSizeAnimation = Tween<double>(
       begin: widget.shadowSize,
       end: _maxShadowSize,
@@ -39,6 +40,7 @@ class _YandexGoShadowEffectState extends State<YandexGoShadowEffect> {
       curve: Curves.easeOut,
     ));
 
+    // Tiniqlik animatsiyasi
     _shadowOpacityAnimation = Tween<double>(
       begin: 0.3,
       end: _minShadowOpacity,
@@ -58,12 +60,14 @@ class _YandexGoShadowEffectState extends State<YandexGoShadowEffect> {
           height: _shadowSizeAnimation.value / 4,
           decoration: BoxDecoration(
             shape: BoxShape.circle,
-            color: widget.shadowColor.withAlpha((_shadowOpacityAnimation.value * 255).toInt()),
+            color: widget.shadowColor
+                .withAlpha((_shadowOpacityAnimation.value * 255).toInt()),
             boxShadow: [
               BoxShadow(
-                color: widget.shadowColor.withAlpha((_shadowOpacityAnimation.value * 255).round()),
+                color: widget.shadowColor
+                    .withAlpha((_shadowOpacityAnimation.value * 255).round()),
                 blurRadius: 3,
-                spreadRadius: 05,
+                spreadRadius: 5,
               ),
             ],
           ),
@@ -73,7 +77,7 @@ class _YandexGoShadowEffectState extends State<YandexGoShadowEffect> {
   }
 }
 
-/// Asosiy TaxiOrderScreen widgeti
+/// ASOSIY EKRAN: TaxiOrderScreen
 class TaxiOrderScreen extends StatefulWidget {
   const TaxiOrderScreen({super.key});
 
@@ -81,20 +85,17 @@ class TaxiOrderScreen extends StatefulWidget {
   State<TaxiOrderScreen> createState() => _TaxiOrderScreenState();
 }
 
-class _TaxiOrderScreenState extends State<TaxiOrderScreen> with SingleTickerProviderStateMixin {
+class _TaxiOrderScreenState extends State<TaxiOrderScreen>
+    with SingleTickerProviderStateMixin {
   final Completer<GoogleMapController> _controllerGoogleMaps = Completer();
-
-  // Foydalanuvchi joylashuvi uchun LatLng
   LatLng? _currentLocation;
 
-  // Xarita harakati davomida markerning ko‘tarilish holati
   bool _isMapMoving = false;
 
-  // AnimationController marker va soyani animatsiyasi uchun
   late AnimationController _animationController;
   late Animation<double> _liftAnimation;
 
-  // Dastlabki kamera joylashuvi (Andijon)
+  // Andijon shahrini boshlang‘ich nuqta sifatida belgilaymiz
   static const CameraPosition _initialCameraPosition = CameraPosition(
     target: LatLng(40.8008333, 72.9881418),
     zoom: 17.0,
@@ -104,7 +105,6 @@ class _TaxiOrderScreenState extends State<TaxiOrderScreen> with SingleTickerProv
   void initState() {
     super.initState();
 
-    // Marker ko‘tarilish animatsiyasi uchun controller va tween
     _animationController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 300),
@@ -114,7 +114,7 @@ class _TaxiOrderScreenState extends State<TaxiOrderScreen> with SingleTickerProv
       CurvedAnimation(parent: _animationController, curve: Curves.easeOut),
     );
 
-    // Foydalanuvchi joyini olish
+    // Joylashuvni aniqlaymiz
     _determinePosition();
   }
 
@@ -124,128 +124,209 @@ class _TaxiOrderScreenState extends State<TaxiOrderScreen> with SingleTickerProv
     super.dispose();
   }
 
-  /// Foydalanuvchi joylashuvini aniqlash
+  /// FOYDALANUVCHINING JOYLASHUVINI ANIQLAYDI
   Future<void> _determinePosition() async {
     bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
-    if (!serviceEnabled) {
-      // GPS o‘chirilgan bo‘lsa
-      return;
-    }
+    if (!serviceEnabled) return;
 
     LocationPermission permission = await Geolocator.checkPermission();
     if (permission == LocationPermission.denied) {
       permission = await Geolocator.requestPermission();
-      if (permission == LocationPermission.denied) {
-        // Ruxsat berilmasa
-        return;
-      }
-    }
-    if (permission == LocationPermission.deniedForever) {
-      return;
+      if (permission == LocationPermission.denied) return;
     }
 
+    if (permission == LocationPermission.deniedForever) return;
+
     Position position = await Geolocator.getCurrentPosition(
-      locationSettings: const LocationSettings(accuracy: LocationAccuracy.high),
+      locationSettings:
+          const LocationSettings(accuracy: LocationAccuracy.high),
     );
 
     _currentLocation = LatLng(position.latitude, position.longitude);
 
     final controller = await _controllerGoogleMaps.future;
-    controller.animateCamera(CameraUpdate.newCameraPosition(CameraPosition(target: _currentLocation!, zoom: 17)));
+    controller.animateCamera(
+      CameraUpdate.newCameraPosition(
+        CameraPosition(target: _currentLocation!, zoom: 17),
+      ),
+    );
 
     setState(() {});
   }
 
-  /// Xarita harakati boshlanganda chaqiriladi
+  /// XARITA HARAKATI BOSHLANGANDA
   void _onCameraMove() {
     if (!_isMapMoving) {
       _isMapMoving = true;
-      _animationController.forward(); // Marker tepaga ko‘tariladi va soya kattalashadi
+      _animationController.forward();
     }
   }
 
-  /// Xarita harakati tugaganda chaqiriladi
+  /// XARITA TO‘XTAGANDA
   void _onCameraIdle() {
     if (_isMapMoving) {
       _isMapMoving = false;
-      _animationController.reverse(); // Marker pastga tushadi va soya kichrayadi
+      _animationController.reverse();
     }
   }
 
-  /// Maxsus tugma bosilganda foydalanuvchi joyiga xaritani olib borish
+  /// JOYIMNI MARKAZGA OLIB KELISH
   Future<void> _goToCurrentLocation() async {
     if (_currentLocation == null) return;
 
     final controller = await _controllerGoogleMaps.future;
-    controller.animateCamera(CameraUpdate.newCameraPosition(CameraPosition(target: _currentLocation!, zoom: 17)));
+    controller.animateCamera(
+      CameraUpdate.newCameraPosition(
+        CameraPosition(target: _currentLocation!, zoom: 17),
+      ),
+    );
   }
 
- @override
-Widget build(BuildContext context) {
-  return Scaffold(
-    body: Stack(
-      children: [
-        GoogleMap(
-          mapType: MapType.normal,
-          initialCameraPosition: _initialCameraPosition,
-          myLocationEnabled: true,
-          myLocationButtonEnabled: false,
-          onMapCreated: (controller) => _controllerGoogleMaps.complete(controller),
-          onCameraMove: (position) => _onCameraMove(),
-          onCameraIdle: () => _onCameraIdle(),
-          padding: EdgeInsets.only(
-          bottom: MediaQuery.of(context).size.height / 2.5, // 2 o‘rniga 1.8
-           ),
-           ),
-
-        // Marker va soya - ekranning yuqori yarmi markazida
-        Align(
-          alignment: Alignment(0.0, -0.5), // -0.3 = yuqori yarmining markaziga yaqin
-          child: AnimatedBuilder(
-            animation: _animationController,
-            builder: (context, child) {
-              return Padding(
-                padding: EdgeInsets.only(bottom: _liftAnimation.value + 65),
-                child: Stack(
-                  alignment: Alignment.topCenter,
-                  children: [
-                    Transform.translate(
-                      offset: Offset(0, -_liftAnimation.value),
-                      child: Image.asset(
-                        'assets/images/men.png',
-                        width: 80,
-                        height: 80,
-                      ),
-                    ),
-                    Positioned(
-                      bottom: 0,
-                      child: YandexGoShadowEffect(
-                        shadowSize: 40,
-                        shadowColor: Colors.black,
-                        animationController: _animationController,
-                      ),
-                    ),
-                  ],
-                ),
-              );
-            },
-          ),
+/// BOTTOM PANELDAGI HAR BIR TUGMA UCHUN BIR XIL STIL
+Widget _buildButton(IconData icon, String label) {
+  return Column(
+    mainAxisSize: MainAxisSize.min,
+    children: [
+      CircleAvatar(
+        radius: 28, // 🔵 Doira o‘lchamini oshirish uchun radiusni oshirdik (default 20)
+        backgroundColor: Colors.white,
+        child: Icon(
+          icon,
+          color: Colors.blue,
+          size: 28, // 🔵 Icon o‘lchamini ham doiraga moslab oshirdik (default 24)
         ),
-
-        // My Location tugmasi
-        Positioned(
-          top: 30,
-          right: 20,
-          child: FloatingActionButton(
-            onPressed: _goToCurrentLocation,
-            backgroundColor: Colors.white,
-            child: const Icon(Icons.my_location, color: Colors.blue),
-          ),
+      ),
+      const SizedBox(height: 6),
+      Text(
+        label,
+        style: const TextStyle(
+          color: Colors.white,
+          fontSize: 14, // 🔵 Matn o‘lchamini biroz oshirdik (default 12)
         ),
-      ],
-    ),
+      ),
+    ],
   );
 }
+
+  /// UI NI QURISH
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      body: Stack(
+        children: [
+          // 🔵 GOOGLE MAP
+          GoogleMap(
+            mapType: MapType.normal,
+            initialCameraPosition: _initialCameraPosition,
+            myLocationEnabled: true,
+            myLocationButtonEnabled: false,
+            zoomControlsEnabled: false, // Zoom +/- tugmalari o'chirildi
+            onMapCreated: (controller) =>
+                _controllerGoogleMaps.complete(controller),
+            onCameraMove: (position) => _onCameraMove(),
+            onCameraIdle: () => _onCameraIdle(),
+            padding: EdgeInsets.only(
+              bottom: MediaQuery.of(context).size.height / 2.5,
+            ),
+          ),
+
+          // 🔵 MARKER VA SOYA
+          Align(
+            alignment: Alignment(0.0, -0.5),
+            child: AnimatedBuilder(
+              animation: _animationController,
+              builder: (context, child) {
+                return Padding(
+                  padding: EdgeInsets.only(bottom: _liftAnimation.value + 65),
+                  child: Stack(
+                    alignment: Alignment.topCenter,
+                    children: [
+                      Transform.translate(
+                        offset: Offset(0, -_liftAnimation.value),
+                        child: Image.asset(
+                          'assets/images/men.png',
+                          width: 80,
+                          height: 80,
+                        ),
+                      ),
+                      Positioned(
+                        bottom: 0,
+                        child: YandexGoShadowEffect(
+                          shadowSize: 40,
+                          shadowColor: Colors.black,
+                          animationController: _animationController,
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              },
+            ),
+          ),
+
+          // 🔵 LOKATSIYA TUGMASI
+          Positioned(
+            top: 30,
+            right: 20,
+            child: FloatingActionButton(
+              onPressed: _goToCurrentLocation,
+              backgroundColor: Colors.white,
+              child: const Icon(Icons.my_location, color: Colors.blue),
+            ),
+          ),
+
+          // ✅ BOTTOM BAR QO‘SHILGAN QISMI
+          Align(
+            alignment: Alignment.bottomCenter,
+            child: Container(
+              decoration: BoxDecoration(
+                color: Colors.blue.shade600,
+                borderRadius: const BorderRadius.vertical(
+                  top: Radius.circular(30),
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: const Color(0x33000000),
+                    blurRadius: 8,
+                    offset: const Offset(0, -2),
+                  ),
+                ],
+              ),
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const SizedBox(height: 10),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      _buildButton(Icons.wifi, "Signal jo'natish"),
+                      _buildButton(Icons.local_taxi, "Avtomatik taksi"),
+                      _buildButton(Icons.groups, "Haydovchilar"),
+                    ],
+                  ),
+                  const SizedBox(height: 20),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    decoration: BoxDecoration(
+                      color: Colors.grey.shade200,
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: const TextField(
+                      decoration: InputDecoration(
+                        hintText: "Yo'nalishni kiriting",
+                        border: InputBorder.none,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 }
 
 
