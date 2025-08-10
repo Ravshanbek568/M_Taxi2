@@ -2,6 +2,8 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:geolocator/geolocator.dart';
+import 'package:geocoding/geocoding.dart';
+import 'package:m_taksi/views/auth/client/select_destination_page.dart';
 
 /// MARKER OSTIDAGI ANIMATSIYALI SOYA WIDGETI
 class YandexGoShadowEffect extends StatefulWidget {
@@ -89,13 +91,13 @@ class _TaxiOrderScreenState extends State<TaxiOrderScreen>
     with SingleTickerProviderStateMixin {
   final Completer<GoogleMapController> _controllerGoogleMaps = Completer();
   LatLng? _currentLocation;
-
+  String _currentAddress = "Manzil aniqlanmoqda...";
   bool _isMapMoving = false;
-
+  bool _isLoadingAddress = false;
   late AnimationController _animationController;
   late Animation<double> _liftAnimation;
 
-  // Andijon shahrini boshlang‘ich nuqta sifatida belgilaymiz
+  // Andijon shahrini boshlang'ich nuqta sifatida belgilaymiz
   static const CameraPosition _initialCameraPosition = CameraPosition(
     target: LatLng(40.8008333, 72.9881418),
     zoom: 17.0,
@@ -124,34 +126,84 @@ class _TaxiOrderScreenState extends State<TaxiOrderScreen>
     super.dispose();
   }
 
-  /// FOYDALANUVCHINING JOYLASHUVINI ANIQLAYDI
+  /// FOYDALANUVCHINING JOYLASHUVINI ANIQLAYDI VA MANZILNI TOPADI
   Future<void> _determinePosition() async {
     bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
-    if (!serviceEnabled) return;
+    if (!serviceEnabled) {
+      _showLocationServiceDisabledAlert();
+      return;
+    }
 
     LocationPermission permission = await Geolocator.checkPermission();
     if (permission == LocationPermission.denied) {
       permission = await Geolocator.requestPermission();
-      if (permission == LocationPermission.denied) return;
+      if (permission == LocationPermission.denied) {
+        _showLocationPermissionDeniedAlert();
+        return;
+      }
     }
 
-    if (permission == LocationPermission.deniedForever) return;
+    if (permission == LocationPermission.deniedForever) {
+      _showLocationPermissionPermanentlyDeniedAlert();
+      return;
+    }
 
-    Position position = await Geolocator.getCurrentPosition(
-      locationSettings:
-          const LocationSettings(accuracy: LocationAccuracy.high),
-    );
+    try {
+      Position position = await Geolocator.getCurrentPosition(
+        locationSettings: const LocationSettings(accuracy: LocationAccuracy.high),
+      );
 
-    _currentLocation = LatLng(position.latitude, position.longitude);
+      _currentLocation = LatLng(position.latitude, position.longitude);
+      await _getAddressFromLatLng(_currentLocation!);
 
-    final controller = await _controllerGoogleMaps.future;
-    controller.animateCamera(
-      CameraUpdate.newCameraPosition(
-        CameraPosition(target: _currentLocation!, zoom: 17),
-      ),
-    );
+      final controller = await _controllerGoogleMaps.future;
+      await controller.animateCamera(
+        CameraUpdate.newCameraPosition(
+          CameraPosition(target: _currentLocation!, zoom: 17),
+        ),
+      );
+    } catch (e) {
+      _showErrorSnackbar("Joylashuvni aniqlashda xatolik yuz berdi");
+    }
+  }
 
-    setState(() {});
+  /// LATLNG DAN TO'LIQ MANZILNI OLISH
+  Future<void> _getAddressFromLatLng(LatLng position) async {
+    setState(() {
+      _isLoadingAddress = true;
+    });
+
+    try {
+      List<Placemark> placemarks = await placemarkFromCoordinates(
+        position.latitude,
+        position.longitude,
+      );
+
+      if (placemarks.isNotEmpty) {
+        Placemark place = placemarks[0];
+        setState(() {
+          _currentAddress = [
+            place.street,
+            place.thoroughfare,
+            place.subLocality,
+            place.locality
+          ].where((part) => part != null && part.isNotEmpty).join(', ');
+        });
+      } else {
+        setState(() {
+          _currentAddress = "Manzil aniqlanmadi";
+        });
+      }
+    } catch (e) {
+      setState(() {
+        _currentAddress = "Manzilni olishda xatolik";
+      });
+      _showErrorSnackbar("Manzilni olishda xatolik yuz berdi");
+    } finally {
+      setState(() {
+        _isLoadingAddress = false;
+      });
+    }
   }
 
   /// XARITA HARAKATI BOSHLANGANDA
@@ -162,11 +214,20 @@ class _TaxiOrderScreenState extends State<TaxiOrderScreen>
     }
   }
 
-  /// XARITA TO‘XTAGANDA
-  void _onCameraIdle() {
+  /// XARITA TO'XTAGANDA
+  void _onCameraIdle() async {
     if (_isMapMoving) {
       _isMapMoving = false;
       _animationController.reverse();
+      
+      final controller = await _controllerGoogleMaps.future;
+      final visibleRegion = await controller.getVisibleRegion();
+      final centerLatLng = LatLng(
+        (visibleRegion.northeast.latitude + visibleRegion.southwest.latitude) / 2,
+        (visibleRegion.northeast.longitude + visibleRegion.southwest.longitude) / 2,
+      );
+      
+      await _getAddressFromLatLng(centerLatLng);
     }
   }
 
@@ -175,52 +236,111 @@ class _TaxiOrderScreenState extends State<TaxiOrderScreen>
     if (_currentLocation == null) return;
 
     final controller = await _controllerGoogleMaps.future;
-    controller.animateCamera(
+    await controller.animateCamera(
       CameraUpdate.newCameraPosition(
         CameraPosition(target: _currentLocation!, zoom: 17),
       ),
     );
+    
+    await _getAddressFromLatLng(_currentLocation!);
   }
 
-/// BOTTOM PANELDAGI HAR BIR TUGMA UCHUN BIR XIL STIL
-Widget _buildButton(IconData icon, String label) {
-  return Column(
-    mainAxisSize: MainAxisSize.min,
-    children: [
-      CircleAvatar(
-        radius: 28, // 🔵 Doira o‘lchamini oshirish uchun radiusni oshirdik (default 20)
-        backgroundColor: Colors.white,
-        child: Icon(
-          icon,
-          color: Colors.blue,
-          size: 28, // 🔵 Icon o‘lchamini ham doiraga moslab oshirdik (default 24)
+  /// BOTTOM PANELDAGI HAR BIR TUGMA UCHUN BIR XIL STIL
+  Widget _buildButton(IconData icon, String label) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        CircleAvatar(
+          radius: 28,
+          backgroundColor: Colors.white,
+          child: Icon(
+            icon,
+            color: Colors.blue,
+            size: 28,
+          ),
         ),
-      ),
-      const SizedBox(height: 6),
-      Text(
-        label,
-        style: const TextStyle(
-          color: Colors.white,
-          fontSize: 14, // 🔵 Matn o‘lchamini biroz oshirdik (default 12)
+        const SizedBox(height: 6),
+        Text(
+          label,
+          style: const TextStyle(
+            color: Colors.white,
+            fontSize: 14,
+          ),
         ),
-      ),
-    ],
-  );
-}
+      ],
+    );
+  }
 
-  /// UI NI QURISH
+  /// XATO XABARNOMALARI
+  void _showErrorSnackbar(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: Colors.red,
+      ),
+    );
+  }
+
+  void _showLocationServiceDisabledAlert() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text("Lokatsiya xizmati o'chirilgan"),
+        content: const Text("Iltimos, joylashuv xizmatini yoqing"),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text("OK"),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showLocationPermissionDeniedAlert() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text("Ruxsat rad etildi"),
+        content: const Text("Iltimos, ilova uchun joylashuv ruxsatini bering"),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text("OK"),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showLocationPermissionPermanentlyDeniedAlert() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text("Ruxsat doimiy ravishda rad etildi"),
+        content: const Text("Sozlamalarga borib, ruxsatni qo'lda yoqing"),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text("OK"),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       body: Stack(
         children: [
-          // 🔵 GOOGLE MAP
+          // GOOGLE MAP
           GoogleMap(
             mapType: MapType.normal,
             initialCameraPosition: _initialCameraPosition,
             myLocationEnabled: true,
             myLocationButtonEnabled: false,
-            zoomControlsEnabled: false, // Zoom +/- tugmalari o'chirildi
+            zoomControlsEnabled: false,
             onMapCreated: (controller) =>
                 _controllerGoogleMaps.complete(controller),
             onCameraMove: (position) => _onCameraMove(),
@@ -230,7 +350,7 @@ Widget _buildButton(IconData icon, String label) {
             ),
           ),
 
-          // 🔵 MARKER VA SOYA
+          // MARKER VA SOYA
           Align(
             alignment: Alignment(0.0, -0.5),
             child: AnimatedBuilder(
@@ -264,10 +384,21 @@ Widget _buildButton(IconData icon, String label) {
             ),
           ),
 
-          // 🔵 LOKATSIYA TUGMASI
+          // ORQAGA QAYTISH TUGMASI (Chap tomonda)
           Positioned(
-            top: 30,
-            right: 20,
+            top: 25,
+            left: 15,
+            child: FloatingActionButton(
+              onPressed: () => Navigator.pop(context),
+              backgroundColor: Colors.white,
+              child: const Icon(Icons.arrow_back, color: Colors.blue),
+            ),
+          ),
+
+          // LOKATSIYA TUGMASI
+          Positioned(
+            top: 25,
+            right: 15,
             child: FloatingActionButton(
               onPressed: _goToCurrentLocation,
               backgroundColor: Colors.white,
@@ -275,7 +406,7 @@ Widget _buildButton(IconData icon, String label) {
             ),
           ),
 
-          // ✅ BOTTOM BAR QO‘SHILGAN QISMI
+          // BOTTOM BAR
           Align(
             alignment: Alignment.bottomCenter,
             child: Container(
@@ -286,13 +417,13 @@ Widget _buildButton(IconData icon, String label) {
                 ),
                 boxShadow: [
                   BoxShadow(
-                    color: const Color(0x33000000),
+                    color: Color.fromRGBO(0, 0, 0, 0.1),
                     blurRadius: 8,
                     offset: const Offset(0, -2),
                   ),
                 ],
               ),
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+              padding: const EdgeInsets.only(left: 20, right: 20, top: 16, bottom: 20),
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
@@ -306,16 +437,107 @@ Widget _buildButton(IconData icon, String label) {
                     ],
                   ),
                   const SizedBox(height: 20),
+
+                  // Joriy manzil containeri
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    width: double.infinity,
+                    margin: const EdgeInsets.only(bottom: 5),
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
                     decoration: BoxDecoration(
-                      color: Colors.grey.shade200,
+                      color: Colors.white,
                       borderRadius: BorderRadius.circular(20),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black12,
+                          blurRadius: 4,
+                          offset: Offset(0, 2),
+                        ),
+                      ],
                     ),
-                    child: const TextField(
-                      decoration: InputDecoration(
-                        hintText: "Yo'nalishni kiriting",
-                        border: InputBorder.none,
+                    child: Row(
+                      children: [
+                        Icon(Icons.location_on, color: Colors.blue, size: 24),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: _isLoadingAddress
+                              ? Row(
+                                  children: [
+                                    SizedBox(
+                                      width: 20,
+                                      height: 20,
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2,
+                                        color: Colors.blue,
+                                      ),
+                                    ),
+                                    const SizedBox(width: 12),
+                                    Text(
+                                      "Manzil aniqlanmoqda...",
+                                      style: TextStyle(
+                                        color: Colors.grey.shade600,
+                                        fontSize: 16,
+                                      ),
+                                    ),
+                                  ],
+                                )
+                              : Text(
+                                  _currentAddress,
+                                  style: TextStyle(
+                                    color: Colors.black,
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                  maxLines: 2,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  
+                  // Yo'nalishni kiriting containeri
+                  GestureDetector(
+                    onTap: () {
+                      if (_currentLocation != null) {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => SelectDestinationPage(
+                              aPoint: _currentLocation!,
+                            ),
+                          ),
+                        );
+                      }
+                    },
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(20),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black12,
+                            blurRadius: 4,
+                            offset: Offset(0, 2),
+                          ),
+                        ],
+                      ),
+                      child: Row(
+                        children: [
+                          Icon(Icons.search, color: Colors.grey, size: 24),
+                          const SizedBox(width: 12),
+                          const Expanded(
+                            child: Text(
+                              "Yo'nalishni kiriting",
+                              style: TextStyle(
+                                color: Colors.grey,
+                                fontSize: 16,
+                              ),
+                            ),
+                          ),
+                          Icon(Icons.chevron_right, color: Colors.grey),
+                        ],
                       ),
                     ),
                   ),
@@ -328,7 +550,6 @@ Widget _buildButton(IconData icon, String label) {
     );
   }
 }
-
 
 
 
