@@ -96,6 +96,7 @@ class _TaxiOrderScreenState extends State<TaxiOrderScreen>
   bool _isLoadingAddress = false;
   late AnimationController _animationController;
   late Animation<double> _liftAnimation;
+  String? _fullAddress; // Buyurtma berish uchun to'liq manzil
 
   // Andijon shahrini boshlang'ich nuqta sifatida belgilaymiz
   static const CameraPosition _initialCameraPosition = CameraPosition(
@@ -167,7 +168,7 @@ class _TaxiOrderScreenState extends State<TaxiOrderScreen>
     }
   }
 
-  /// LATLNG DAN TO'LIQ MANZILNI OLISH
+  /// LATLNG DAN TO'LIQ MANZILNI OLISH (YANGILANGAN VERSIYA)
   Future<void> _getAddressFromLatLng(LatLng position) async {
     setState(() {
       _isLoadingAddress = true;
@@ -181,22 +182,48 @@ class _TaxiOrderScreenState extends State<TaxiOrderScreen>
 
       if (placemarks.isNotEmpty) {
         Placemark place = placemarks[0];
+        
+        // 1. To'liq manzilni tayyorlaymiz (buyurtma berishda ishlatish uchun)
+        _fullAddress = [
+          place.street,
+          place.thoroughfare,
+          place.subLocality,
+          place.locality
+        ].where((part) => part != null && part.isNotEmpty).join(', ');
+        
+        // 2. Foydalanuvchiga ko'rsatish uchun manzilni tayyorlaymiz
+        String displayAddress;
+        
+        // Agar shahar nomi aniqlangan bo'lsa
+        if (place.locality != null && place.locality!.isNotEmpty) {
+          // Ko'cha/uy raqami kodlardan iborat bo'lsa (masalan, "RX2P+4FR")
+          if ((place.street != null && place.street!.contains('+') && place.street!.length < 10) ||
+              (place.thoroughfare != null && place.thoroughfare!.contains('+') && place.thoroughfare!.length < 10)) {
+            displayAddress = "Ko'rdinatangiz (${place.locality})";
+          } 
+          // To'liq manzil mavjud bo'lsa
+          else {
+            displayAddress = _fullAddress!;
+          }
+        } 
+        // Shahar nomi ham aniqlanmagan bo'lsa
+        else {
+          displayAddress = "Ko'rdinatangiz";
+        }
+
         setState(() {
-          _currentAddress = [
-            place.street,
-            place.thoroughfare,
-            place.subLocality,
-            place.locality
-          ].where((part) => part != null && part.isNotEmpty).join(', ');
+          _currentAddress = displayAddress;
         });
       } else {
         setState(() {
           _currentAddress = "Manzil aniqlanmadi";
+          _fullAddress = null;
         });
       }
     } catch (e) {
       setState(() {
         _currentAddress = "Manzilni olishda xatolik";
+        _fullAddress = null;
       });
       _showErrorSnackbar("Manzilni olishda xatolik yuz berdi");
     } finally {
@@ -487,7 +514,7 @@ class _TaxiOrderScreenState extends State<TaxiOrderScreen>
                                     fontSize: 16,
                                     fontWeight: FontWeight.w500,
                                   ),
-                                  maxLines: 2,
+                                  maxLines: 1,  // qatorni bir qator qilish uchun 
                                   overflow: TextOverflow.ellipsis,
                                 ),
                         ),
@@ -550,7 +577,6 @@ class _TaxiOrderScreenState extends State<TaxiOrderScreen>
     );
   }
 }
-
 
 
 
