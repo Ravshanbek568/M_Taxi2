@@ -1,15 +1,21 @@
+// Dart asinxron operatsiyalari uchun kutubxona
 import 'dart:async';
+// Flutter UI kutubxonasi
 import 'package:flutter/material.dart';
+// Google Maps widgetlari uchun kutubxona
 import 'package:google_maps_flutter/google_maps_flutter.dart';
+// Geolokatsiya xizmatlari uchun kutubxona
 import 'package:geolocator/geolocator.dart';
+// Geokodlash (manzilni koordinatalarga aylantirish) uchun kutubxona
 import 'package:geocoding/geocoding.dart';
+// Yo'nalishni tanlash ekrani uchun import
 import 'package:m_taksi/views/auth/client/select_destination_page.dart';
 
 /// MARKER OSTIDAGI ANIMATSIYALI SOYA WIDGETI
 class YandexGoShadowEffect extends StatefulWidget {
-  final double shadowSize;
-  final Color shadowColor;
-  final AnimationController animationController;
+  final double shadowSize;          // Soyaning boshlang'ich o'lchami
+  final Color shadowColor;          // Soyaning rangi
+  final AnimationController animationController; // Animatsiya kontrolleri
 
   const YandexGoShadowEffect({
     super.key,
@@ -23,32 +29,32 @@ class YandexGoShadowEffect extends StatefulWidget {
 }
 
 class _YandexGoShadowEffectState extends State<YandexGoShadowEffect> {
-  late Animation<double> _shadowSizeAnimation;
-  late Animation<double> _shadowOpacityAnimation;
+  late Animation<double> _shadowSizeAnimation;    // Soyaning o'lcham animatsiyasi
+  late Animation<double> _shadowOpacityAnimation; // Soyaning tiniqlik animatsiyasi
 
-  final double _maxShadowSize = 60.0;
-  final double _minShadowOpacity = 0.1;
+  final double _maxShadowSize = 60.0;     // Soyaning maksimal o'lchami
+  final double _minShadowOpacity = 0.1;   // Soyaning minimal tiniqligi
 
   @override
   void initState() {
     super.initState();
 
-    // Kengayuvchi soya animatsiyasi
+    // Kengayuvchi soya animatsiyasini sozlash
     _shadowSizeAnimation = Tween<double>(
-      begin: widget.shadowSize,
-      end: _maxShadowSize,
+      begin: widget.shadowSize,  // Boshlang'ich o'lcham
+      end: _maxShadowSize,        // Yakuniy o'lcham
     ).animate(CurvedAnimation(
       parent: widget.animationController,
-      curve: Curves.easeOut,
+      curve: Curves.easeOut,      // Animatsiya egri chizig'i
     ));
 
-    // Tiniqlik animatsiyasi
+    // Tiniqlik animatsiyasini sozlash
     _shadowOpacityAnimation = Tween<double>(
-      begin: 0.3,
-      end: _minShadowOpacity,
+      begin: 0.3,               // Boshlang'ich tiniqlik
+      end: _minShadowOpacity,    // Yakuniy tiniqlik
     ).animate(CurvedAnimation(
       parent: widget.animationController,
-      curve: Curves.easeOut,
+      curve: Curves.easeOut,      // Animatsiya egri chizig'i
     ));
   }
 
@@ -58,18 +64,20 @@ class _YandexGoShadowEffectState extends State<YandexGoShadowEffect> {
       animation: widget.animationController,
       builder: (context, _) {
         return Container(
-          width: _shadowSizeAnimation.value,
-          height: _shadowSizeAnimation.value / 4,
+          width: _shadowSizeAnimation.value,      // Animatsiyadagi joriy kenglik
+          height: _shadowSizeAnimation.value / 4, // Balandlik kenglikning 1/4 qismi
           decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            color: widget.shadowColor
-                .withAlpha((_shadowOpacityAnimation.value * 255).toInt()),
+            shape: BoxShape.circle,              // Doira shakli
+            color: widget.shadowColor.withAlpha(
+              (_shadowOpacityAnimation.value * 255).toInt() // Tiniqlikni rangga aylantirish
+            ),
             boxShadow: [
               BoxShadow(
-                color: widget.shadowColor
-                    .withAlpha((_shadowOpacityAnimation.value * 255).round()),
-                blurRadius: 3,
-                spreadRadius: 5,
+                color: widget.shadowColor.withAlpha(
+                  (_shadowOpacityAnimation.value * 255).round() // Soyaning rangi
+                ),
+                blurRadius: 3,    // Soyaning noaniqligi
+                spreadRadius: 5,  // Soyaning tarqalishi
               ),
             ],
           ),
@@ -90,73 +98,84 @@ class TaxiOrderScreen extends StatefulWidget {
 class _TaxiOrderScreenState extends State<TaxiOrderScreen>
     with SingleTickerProviderStateMixin {
   final Completer<GoogleMapController> _controllerGoogleMaps = Completer();
-  LatLng? _currentLocation;
-  String _currentAddress = "Manzil aniqlanmoqda...";
-  bool _isMapMoving = false;
-  bool _isLoadingAddress = false;
-  late AnimationController _animationController;
-  late Animation<double> _liftAnimation;
-  String? _fullAddress; // Buyurtma berish uchun to'liq manzil
+  LatLng? _currentLocation;          // Joriy joylashuv koordinatalari
+  String _currentAddress = "Manzil aniqlanmoqda..."; // Joriy manzil matni
+  bool _isMapMoving = false;         // Xarita harakatlanayotganligi
+  bool _isLoadingAddress = false;    // Manzil yuklanayotganligi
+  late AnimationController _animationController; // Animatsiya kontrolleri
+  late Animation<double> _liftAnimation;         // Marker ko'tarilish animatsiyasi
+  String? _fullAddress;             // Buyurtma berish uchun to'liq manzil
 
-  // Andijon shahrini boshlang'ich nuqta sifatida belgilaymiz
+  // Andijon shahrini boshlang'ich nuqta sifatida belgilash
   static const CameraPosition _initialCameraPosition = CameraPosition(
-    target: LatLng(40.8008333, 72.9881418),
-    zoom: 17.0,
+    target: LatLng(40.8008333, 72.9881418), // Andijon koordinatalari
+    zoom: 17.0,                             // Boshlang'ich zoom darajasi
   );
 
   @override
   void initState() {
     super.initState();
 
+    // Animatsiya kontrollerini ishga tushirish
     _animationController = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 300),
+      duration: const Duration(milliseconds: 300), // Animatsiya davomiyligi
     );
 
+    // Marker ko'tarilish animatsiyasi
     _liftAnimation = Tween<double>(begin: 0, end: 15).animate(
-      CurvedAnimation(parent: _animationController, curve: Curves.easeOut),
+      CurvedAnimation(
+        parent: _animationController, 
+        curve: Curves.easeOut // Animatsiya egri chizig'i
+      ),
     );
 
-    // Joylashuvni aniqlaymiz
+    // Joylashuvni aniqlash funksiyasini chaqirish
     _determinePosition();
   }
 
   @override
   void dispose() {
-    _animationController.dispose();
+    _animationController.dispose(); // Animatsiya kontrollerini tozalash
     super.dispose();
   }
 
-  /// FOYDALANUVCHINING JOYLASHUVINI ANIQLAYDI VA MANZILNI TOPADI
+  /// FOYDALANUVCHINING JOYLASHUVINI ANIQLASH VA MANZILNI TOPISH
   Future<void> _determinePosition() async {
+    // Lokatsiya xizmatlari yoqilganligini tekshirish
     bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
     if (!serviceEnabled) {
-      _showLocationServiceDisabledAlert();
+      _showLocationServiceDisabledAlert(); // Agar yoqilmagan bo'lsa ogohlantirish
       return;
     }
 
+    // Lokatsiya ruxsatlarini tekshirish
     LocationPermission permission = await Geolocator.checkPermission();
     if (permission == LocationPermission.denied) {
-      permission = await Geolocator.requestPermission();
+      permission = await Geolocator.requestPermission(); // Ruxsat so'rash
       if (permission == LocationPermission.denied) {
-        _showLocationPermissionDeniedAlert();
+        _showLocationPermissionDeniedAlert(); // Agar rad etilsa ogohlantirish
         return;
       }
     }
 
+    // Agar ruxsat doimiy ravishda rad etilgan bo'lsa
     if (permission == LocationPermission.deniedForever) {
       _showLocationPermissionPermanentlyDeniedAlert();
       return;
     }
 
     try {
+      // Joriy joylashuvni olish
       Position position = await Geolocator.getCurrentPosition(
         locationSettings: const LocationSettings(accuracy: LocationAccuracy.high),
       );
 
+      // Joylashuvni saqlash va manzilni olish
       _currentLocation = LatLng(position.latitude, position.longitude);
       await _getAddressFromLatLng(_currentLocation!);
 
+      // Xaritani joriy joylashuvga o'tkazish
       final controller = await _controllerGoogleMaps.future;
       await controller.animateCamera(
         CameraUpdate.newCameraPosition(
@@ -171,10 +190,11 @@ class _TaxiOrderScreenState extends State<TaxiOrderScreen>
   /// LATLNG DAN TO'LIQ MANZILNI OLISH (YANGILANGAN VERSIYA)
   Future<void> _getAddressFromLatLng(LatLng position) async {
     setState(() {
-      _isLoadingAddress = true;
+      _isLoadingAddress = true; // Yuklanish holatini o'rnatish
     });
 
     try {
+      // Koordinatalardan manzil ma'lumotlarini olish
       List<Placemark> placemarks = await placemarkFromCoordinates(
         position.latitude,
         position.longitude,
@@ -183,15 +203,15 @@ class _TaxiOrderScreenState extends State<TaxiOrderScreen>
       if (placemarks.isNotEmpty) {
         Placemark place = placemarks[0];
         
-        // 1. To'liq manzilni tayyorlaymiz (buyurtma berishda ishlatish uchun)
+        // 1. To'liq manzilni tayyorlash (buyurtma berishda ishlatish uchun)
         _fullAddress = [
-          place.street,
-          place.thoroughfare,
-          place.subLocality,
-          place.locality
+          place.street,       // Ko'cha nomi
+          place.thoroughfare, // Asosiy yo'l
+          place.subLocality,  // Mahalla
+          place.locality      // Shahar
         ].where((part) => part != null && part.isNotEmpty).join(', ');
         
-        // 2. Foydalanuvchiga ko'rsatish uchun manzilni tayyorlaymiz
+        // 2. Foydalanuvchiga ko'rsatish uchun manzilni tayyorlash
         String displayAddress;
         
         // Agar shahar nomi aniqlangan bo'lsa
@@ -211,6 +231,7 @@ class _TaxiOrderScreenState extends State<TaxiOrderScreen>
           displayAddress = "Ko'rdinatangiz";
         }
 
+        // UI ni yangilash
         setState(() {
           _currentAddress = displayAddress;
         });
@@ -228,7 +249,7 @@ class _TaxiOrderScreenState extends State<TaxiOrderScreen>
       _showErrorSnackbar("Manzilni olishda xatolik yuz berdi");
     } finally {
       setState(() {
-        _isLoadingAddress = false;
+        _isLoadingAddress = false; // Yuklanish holatini o'chirish
       });
     }
   }
@@ -236,17 +257,18 @@ class _TaxiOrderScreenState extends State<TaxiOrderScreen>
   /// XARITA HARAKATI BOSHLANGANDA
   void _onCameraMove() {
     if (!_isMapMoving) {
-      _isMapMoving = true;
-      _animationController.forward();
+      _isMapMoving = true;            // Harakat holatini o'rnatish
+      _animationController.forward();  // Animatsiyani boshlash
     }
   }
 
   /// XARITA TO'XTAGANDA
   void _onCameraIdle() async {
     if (_isMapMoving) {
-      _isMapMoving = false;
-      _animationController.reverse();
+      _isMapMoving = false;            // Harakat holatini o'chirish
+      _animationController.reverse();   // Animatsiyani teskari aylantirish
       
+      // Xarita markazini aniqlash
       final controller = await _controllerGoogleMaps.future;
       final visibleRegion = await controller.getVisibleRegion();
       final centerLatLng = LatLng(
@@ -254,6 +276,7 @@ class _TaxiOrderScreenState extends State<TaxiOrderScreen>
         (visibleRegion.northeast.longitude + visibleRegion.southwest.longitude) / 2,
       );
       
+      // Yangi markaz uchun manzilni olish
       await _getAddressFromLatLng(centerLatLng);
     }
   }
@@ -262,6 +285,7 @@ class _TaxiOrderScreenState extends State<TaxiOrderScreen>
   Future<void> _goToCurrentLocation() async {
     if (_currentLocation == null) return;
 
+    // Xaritani joriy joylashuvga o'tkazish
     final controller = await _controllerGoogleMaps.future;
     await controller.animateCamera(
       CameraUpdate.newCameraPosition(
@@ -269,6 +293,7 @@ class _TaxiOrderScreenState extends State<TaxiOrderScreen>
       ),
     );
     
+    // Manzilni yangilash
     await _getAddressFromLatLng(_currentLocation!);
   }
 
@@ -277,6 +302,7 @@ class _TaxiOrderScreenState extends State<TaxiOrderScreen>
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
+        // Tugma ikonkasi
         CircleAvatar(
           radius: 28,
           backgroundColor: Colors.white,
@@ -287,6 +313,7 @@ class _TaxiOrderScreenState extends State<TaxiOrderScreen>
           ),
         ),
         const SizedBox(height: 6),
+        // Tugma matni
         Text(
           label,
           style: const TextStyle(
@@ -308,6 +335,7 @@ class _TaxiOrderScreenState extends State<TaxiOrderScreen>
     );
   }
 
+  // Lokatsiya xizmati o'chirilganligi haqida ogohlantirish
   void _showLocationServiceDisabledAlert() {
     showDialog(
       context: context,
@@ -324,6 +352,7 @@ class _TaxiOrderScreenState extends State<TaxiOrderScreen>
     );
   }
 
+  // Lokatsiya ruxsati rad etilganligi haqida ogohlantirish
   void _showLocationPermissionDeniedAlert() {
     showDialog(
       context: context,
@@ -340,6 +369,7 @@ class _TaxiOrderScreenState extends State<TaxiOrderScreen>
     );
   }
 
+  // Lokatsiya ruxsati doimiy ravishda rad etilganligi haqida ogohlantirish
   void _showLocationPermissionPermanentlyDeniedAlert() {
     showDialog(
       context: context,
@@ -361,25 +391,25 @@ class _TaxiOrderScreenState extends State<TaxiOrderScreen>
     return Scaffold(
       body: Stack(
         children: [
-          // GOOGLE MAP
+          // GOOGLE XARITA KO'RINISHI
           GoogleMap(
-            mapType: MapType.normal,
-            initialCameraPosition: _initialCameraPosition,
-            myLocationEnabled: true,
-            myLocationButtonEnabled: false,
-            zoomControlsEnabled: false,
+            mapType: MapType.normal,              // Xarita turi
+            initialCameraPosition: _initialCameraPosition, // Boshlang'ich pozitsiya
+            myLocationEnabled: true,              // Joriy joylashuvni ko'rsatish
+            myLocationButtonEnabled: false,       // Standart joylashuv tugmasini o'chirish
+            zoomControlsEnabled: false,           // Zoom tugmalarini o'chirish
             onMapCreated: (controller) =>
-                _controllerGoogleMaps.complete(controller),
-            onCameraMove: (position) => _onCameraMove(),
-            onCameraIdle: () => _onCameraIdle(),
+                _controllerGoogleMaps.complete(controller), // Kontroller yaratilganda
+            onCameraMove: (position) => _onCameraMove(),    // Xarita harakatlanganda
+            onCameraIdle: () => _onCameraIdle(),            // Xarita to'xtaganda
             padding: EdgeInsets.only(
-              bottom: MediaQuery.of(context).size.height / 2.5,
+              bottom: MediaQuery.of(context).size.height / 2.5, // Pastki padding
             ),
           ),
 
-          // MARKER VA SOYA
+          // MARKER VA SOYA ANIMATSIYASI
           Align(
-            alignment: Alignment(0.0, -0.5),
+            alignment: Alignment(0.0, -0.5),      // Markerni markazga joylash
             child: AnimatedBuilder(
               animation: _animationController,
               builder: (context, child) {
@@ -388,14 +418,16 @@ class _TaxiOrderScreenState extends State<TaxiOrderScreen>
                   child: Stack(
                     alignment: Alignment.topCenter,
                     children: [
+                      // Marker rasmi
                       Transform.translate(
-                        offset: Offset(0, -_liftAnimation.value),
+                        offset: Offset(0, -_liftAnimation.value), // Ko'tarilish effekti
                         child: Image.asset(
-                          'assets/images/men.png',
+                          'assets/images/men.png', // Marker rasmi
                           width: 80,
                           height: 80,
                         ),
                       ),
+                      // Marker soyasi
                       Positioned(
                         bottom: 0,
                         child: YandexGoShadowEffect(
@@ -416,37 +448,37 @@ class _TaxiOrderScreenState extends State<TaxiOrderScreen>
             top: 25,
             left: 15,
             child: FloatingActionButton(
-              onPressed: () => Navigator.pop(context),
+              onPressed: () => Navigator.pop(context), // Oldingi ekranga qaytish
               backgroundColor: Colors.white,
               child: const Icon(Icons.arrow_back, color: Colors.blue),
             ),
           ),
 
-          // LOKATSIYA TUGMASI
+          // LOKATSIYA TUGMASI (O'ng tomonda)
           Positioned(
             top: 25,
             right: 15,
             child: FloatingActionButton(
-              onPressed: _goToCurrentLocation,
+              onPressed: _goToCurrentLocation, // Joriy joylashuvga o'tish
               backgroundColor: Colors.white,
               child: const Icon(Icons.my_location, color: Colors.blue),
             ),
           ),
 
-          // BOTTOM BAR
+          // PASTKI PANEL (Bottom Bar)
           Align(
             alignment: Alignment.bottomCenter,
             child: Container(
               decoration: BoxDecoration(
-                color: Colors.blue.shade600,
+                color: Colors.blue.shade600,           // Fon rangi
                 borderRadius: const BorderRadius.vertical(
-                  top: Radius.circular(30),
+                  top: Radius.circular(30),           // Ustki qirralarni yumaloq
                 ),
                 boxShadow: [
                   BoxShadow(
                     color: Color.fromRGBO(0, 0, 0, 0.1),
                     blurRadius: 8,
-                    offset: const Offset(0, -2),
+                    offset: const Offset(0, -2),     // Soyya effekti
                   ),
                 ],
               ),
@@ -455,6 +487,7 @@ class _TaxiOrderScreenState extends State<TaxiOrderScreen>
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   const SizedBox(height: 10),
+                  // Tugmalar qatori
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
@@ -465,7 +498,7 @@ class _TaxiOrderScreenState extends State<TaxiOrderScreen>
                   ),
                   const SizedBox(height: 20),
 
-                  // Joriy manzil containeri
+                  // JORIY MANZIL KONTEYNERI
                   Container(
                     width: double.infinity,
                     margin: const EdgeInsets.only(bottom: 5),
@@ -487,7 +520,7 @@ class _TaxiOrderScreenState extends State<TaxiOrderScreen>
                         const SizedBox(width: 12),
                         Expanded(
                           child: _isLoadingAddress
-                              ? Row(
+                              ? Row( // Yuklanish holatida ko'rsatiladigan widget
                                   children: [
                                     SizedBox(
                                       width: 20,
@@ -507,14 +540,14 @@ class _TaxiOrderScreenState extends State<TaxiOrderScreen>
                                     ),
                                   ],
                                 )
-                              : Text(
+                              : Text( // Yuklanish tugaganda ko'rsatiladigan manzil
                                   _currentAddress,
                                   style: TextStyle(
                                     color: Colors.black,
                                     fontSize: 16,
                                     fontWeight: FontWeight.w500,
                                   ),
-                                  maxLines: 1,  // qatorni bir qator qilish uchun 
+                                  maxLines: 1,
                                   overflow: TextOverflow.ellipsis,
                                 ),
                         ),
@@ -523,10 +556,11 @@ class _TaxiOrderScreenState extends State<TaxiOrderScreen>
                   ),
                   const SizedBox(height: 10),
                   
-                  // Yo'nalishni kiriting containeri
+                  // YO'NALISHNI KIRITISH KONTEYNERI
                   GestureDetector(
                     onTap: () {
                       if (_currentLocation != null) {
+                        // Yo'nalishni tanlash ekraniga o'tish
                         Navigator.push(
                           context,
                           MaterialPageRoute(
@@ -577,7 +611,6 @@ class _TaxiOrderScreenState extends State<TaxiOrderScreen>
     );
   }
 }
-
 
 
 // import 'dart:async';
