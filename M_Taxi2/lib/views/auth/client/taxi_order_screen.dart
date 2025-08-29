@@ -114,9 +114,13 @@ class _TaxiOrderScreenState extends State<TaxiOrderScreen>
   late Animation<double> _liftAnimation; // Marker ko'tarilish animatsiyasi
   String? _fullAddress; // Buyurtma berish uchun to'liq manzil
 
-  // YANGI: Tanlangan manzil ma'lumotlari
+  // Tanlangan manzil ma'lumotlari
   LatLng? _selectedDestination; // Tanlangan manzil koordinatalari
   String? _selectedDestinationAddress; // Tanlangan manzil matni
+
+  // YANGI: Saqlangan manzil ma'lumotlari
+  LatLng? _savedPickupLocation; // Yo'nalishni tanlash bosilganda saqlanadigan nuqta
+  String? _savedPickupAddress; // Saqlangan manzil matni
 
   // Andijon shahrini boshlang'ich nuqta sifatida belgilash
   static const CameraPosition _initialCameraPosition = CameraPosition(
@@ -201,9 +205,15 @@ class _TaxiOrderScreenState extends State<TaxiOrderScreen>
     }
   }
 
-  /// YANGI: SelectDestinationPage dan natijani qayta ishlash
+  /// YANGI: SelectDestinationPage dan natijani qayta ishlash (YANGILANDI)
   void _handleDestinationSelection() async {
     if (_currentLocation != null) {
+      // YANGI: faqat birinchi bosishda pickupni saqlab qo'yamiz
+      if (_savedPickupLocation == null && _savedPickupAddress == null) {
+        _savedPickupLocation = _currentLocation;
+        _savedPickupAddress = _currentAddress;
+      }
+
       // SelectDestinationPage ga o'tish va natijani kutish
       final result = await Navigator.push(
         context,
@@ -222,13 +232,13 @@ class _TaxiOrderScreenState extends State<TaxiOrderScreen>
               result['address'] as String; // Manzil matnini saqlash
         });
 
-        // YANGI: Tanlangan manzilga xaritani markazlashtirish
+        // Tanlangan manzilga xaritani markazlashtirish
         _goToSelectedDestination();
       }
     }
   }
 
-  /// YANGI: Tanlangan manzilga xaritani markazlashtirish
+  /// Tanlangan manzilga xaritani markazlashtirish
   Future<void> _goToSelectedDestination() async {
     if (_selectedDestination != null) {
       final controller = await _controllerGoogleMaps.future;
@@ -240,15 +250,19 @@ class _TaxiOrderScreenState extends State<TaxiOrderScreen>
     }
   }
 
-  /// YANGI: Tanlangan manzilni tozalash funksiyasi
+  /// YANGI: Tanlangan manzilni tozalash funksiyasi (YANGILANDI)
   void _clearSelectedDestination() {
     setState(() {
       _selectedDestination = null;
       _selectedDestinationAddress = null;
+
+      // YANGI: pickupni ham tozalaymiz
+      _savedPickupLocation = null;
+      _savedPickupAddress = null;
     });
   }
 
-  /// LATLNG DAN TO'LIQ MANZILNI OLISH (YANGILANGAN VERSIYA)
+  /// LATLNG DAN TO'LIQ MANZILNI OLISH
   Future<void> _getAddressFromLatLng(LatLng position) async {
     setState(() {
       _isLoadingAddress = true; // Yuklanish holatini o'rnatish
@@ -573,7 +587,7 @@ class _TaxiOrderScreenState extends State<TaxiOrderScreen>
                   ),
                   const SizedBox(height: 20),
 
-                  // JORIY MANZIL KONTEYNERI
+                  // JORIY MANZIL KONTEYNERI (YANGILANDI)
                   Container(
                     width: double.infinity,
                     margin: const EdgeInsets.only(bottom: 5),
@@ -621,8 +635,8 @@ class _TaxiOrderScreenState extends State<TaxiOrderScreen>
                                     ],
                                   )
                                   : Text(
-                                    // Yuklanish tugaganda ko'rsatiladigan manzil
-                                    _currentAddress,
+                                    // YANGI: Saqlangan manzil mavjud bo'lsa uni, yo'q bo'lsa joriy manzilni ko'rsatish
+                                    _savedPickupAddress ?? _currentAddress,
                                     style: TextStyle(
                                       color: Colors.black,
                                       fontSize: 16,
@@ -637,58 +651,59 @@ class _TaxiOrderScreenState extends State<TaxiOrderScreen>
                   ),
                   const SizedBox(height: 10),
 
+                // YO'NALISHNI KIRITISH KONTEYNERI
                 GestureDetector(
-  onTap: _selectedDestinationAddress == null
-      ? _handleDestinationSelection
-      : null,
-  child: Container(
-    height: 50, // container balandligini belgilaymiz
-    padding: const EdgeInsets.symmetric(horizontal: 16),
-    decoration: BoxDecoration(
-      color: Colors.white,
-      borderRadius: BorderRadius.circular(20),
-      boxShadow: [
-        BoxShadow(
-          color: Colors.black12,
-          blurRadius: 4,
-          offset: Offset(0, 2),
-        ),
-      ],
-    ),
-    child: Row(
-      children: [
-        Icon(
-          _selectedDestinationAddress != null ? Icons.location_on : Icons.search,
-          color: _selectedDestinationAddress != null ? Colors.blue : Colors.grey,
-          size: 24,
-        ),
-        const SizedBox(width: 12),
-        Expanded(
-          child: SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            child: Text(
-              _selectedDestinationAddress ?? "Yo'nalishni kiriting",
-              style: TextStyle(
-                color: _selectedDestinationAddress != null ? Colors.black : Colors.grey,
-                fontSize: 16,
-                fontWeight: _selectedDestinationAddress != null
-                    ? FontWeight.w500
-                    : FontWeight.normal,
-              ),
-            ),
-          ),
-        ),
-        if (_selectedDestinationAddress != null)
-          IconButton(
-            icon: Icon(Icons.close, color: Colors.grey),
-            onPressed: _clearSelectedDestination,
-          )
-        else
-          Icon(Icons.chevron_right, color: Colors.grey),
-      ],
-    ),
-  ),
-)
+                  onTap: _selectedDestinationAddress == null
+                      ? _handleDestinationSelection
+                      : null,
+                  child: Container(
+                    height: 50, // container balandligini belgilaymiz
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(20),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black12,
+                          blurRadius: 4,
+                          offset: Offset(0, 2),
+                        ),
+                      ],
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(
+                          _selectedDestinationAddress != null ? Icons.location_on : Icons.search,
+                          color: _selectedDestinationAddress != null ? Colors.blue : Colors.grey,
+                          size: 24,
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: SingleChildScrollView(
+                            scrollDirection: Axis.horizontal,
+                            child: Text(
+                              _selectedDestinationAddress ?? "Yo'nalishni kiriting",
+                              style: TextStyle(
+                                color: _selectedDestinationAddress != null ? Colors.black : Colors.grey,
+                                fontSize: 16,
+                                fontWeight: _selectedDestinationAddress != null
+                                    ? FontWeight.w500
+                                    : FontWeight.normal,
+                              ),
+                            ),
+                          ),
+                        ),
+                        if (_selectedDestinationAddress != null)
+                          IconButton(
+                            icon: Icon(Icons.close, color: Colors.grey),
+                            onPressed: _clearSelectedDestination,
+                          )
+                        else
+                          Icon(Icons.chevron_right, color: Colors.grey),
+                      ],
+                    ),
+                  ),
+                )
 
                 ],
               ),
@@ -699,7 +714,6 @@ class _TaxiOrderScreenState extends State<TaxiOrderScreen>
     );
   }
 }
-
 // import 'dart:async';
 
 // import 'package:flutter/material.dart';
