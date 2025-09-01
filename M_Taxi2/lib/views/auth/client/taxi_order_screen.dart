@@ -123,26 +123,33 @@ class _TaxiOrderScreenState extends State<TaxiOrderScreen>
   LatLng? _selectedDestination; // Tanlangan manzil koordinatalari
   String? _selectedDestinationAddress; // Tanlangan manzil matni
 
-  // YANGI: Saqlangan manzil ma'lumotlari
-  LatLng? _savedPickupLocation; // Yo'nalishni tanlash bosilganda saqlanadigan nuqta
+  // Saqlangan manzil ma'lumotlari
+  LatLng?
+  _savedPickupLocation; // Yo'nalishni tanlash bosilganda saqlanadigan nuqta
   String? _savedPickupAddress; // Saqlangan manzil matni
 
-  // YANGI: Marshrut chizish uchun
-  final Set<maps.Polyline> _polylines = {}; // Marshrut chiziqlari (FINAL qilindi)
+  // Marshrut chizish uchun
+  final Set<maps.Polyline> _polylines =
+      {}; // Marshrut chiziqlari (FINAL qilindi)
   static const Color _routeColor = Colors.blue; // Marshrut rangi
   static const int _routeWidth = 5; // Marshrut kengligi
 
-  // YANGI: Tugmalarning faollik holati
+  // Tugmalarning faollik holati
   bool _isSignalButtonActive = false;
   bool _isAutoTaxiButtonActive = false;
   bool _isDriversButtonActive = false;
-  
-  // YANGI: Qidiruv jarayoni
+
+  // Qidiruv jarayoni
   bool _isSearching = false;
   Timer? _searchAnimationTimer;
   double _searchZoomLevel = 17.0;
   int _foundTaxisCount = 0;
   bool _showDriverFoundButton = false;
+
+  // Signal parametrlari
+  String _destinationName = ""; // Yo'lovchi boradigan manzil nomi
+  int _passengerCount = 1; // Yo'lovchilar soni
+  String _carType = "Yengil"; // Mashina turi (1-Yengil, 2-Istalgan)
 
   // Andijon shahrini boshlang'ich nuqta sifatida belgilash
   static const CameraPosition _initialCameraPosition = CameraPosition(
@@ -228,10 +235,10 @@ class _TaxiOrderScreenState extends State<TaxiOrderScreen>
     }
   }
 
-  /// YANGI: SelectDestinationPage dan natijani qayta ishlash (YANGILANDI)
+  /// SelectDestinationPage dan natijani qayta ishlash
   void _handleDestinationSelection() async {
     if (_currentLocation != null) {
-      // YANGI: faqat birinchi bosishda pickupni saqlab qo'yamiz
+      // faqat birinchi bosishda pickupni saqlab qo'yamiz
       if (_savedPickupLocation == null && _savedPickupAddress == null) {
         _savedPickupLocation = _currentLocation;
         _savedPickupAddress = _currentAddress;
@@ -257,54 +264,59 @@ class _TaxiOrderScreenState extends State<TaxiOrderScreen>
 
         // Tanlangan manzilga xaritani markazlashtirish
         _goToSelectedDestination();
-        
-        // YANGI: Marshrut chizish
+
+        // Marshrut chizish
         _drawRoute();
-        
-        // YANGI: Tugmalarni faollashtirish
+
+        // Tugmalarni faollashtirish
         _updateButtonsState();
       }
     }
   }
 
-  /// YANGI: Tugmalarning holatini yangilash
+  /// Tugmalarning holatini yangilash
   void _updateButtonsState() {
     setState(() {
       // Ikkala manzil ham kiritilgan bo'lsa tugmalarni faollashtirish
-      bool hasBothLocations = _savedPickupLocation != null && _selectedDestination != null;
+      bool hasBothLocations =
+          _savedPickupLocation != null && _selectedDestination != null;
       _isSignalButtonActive = hasBothLocations;
       _isAutoTaxiButtonActive = hasBothLocations;
       _isDriversButtonActive = hasBothLocations;
     });
   }
 
-  /// YANGI: Marshrut chizish funksiyasi
+  /// Marshrut chizish funksiyasi
   Future<void> _drawRoute() async {
     if (_savedPickupLocation == null || _selectedDestination == null) return;
-    
+
     try {
       // Google Directions API dan marshrut ma'lumotlarini olish
-      final String url = 
+      final String url =
           'https://maps.googleapis.com/maps/api/directions/json?'
           'origin=${_savedPickupLocation!.latitude},${_savedPickupLocation!.longitude}'
           '&destination=${_selectedDestination!.latitude},${_selectedDestination!.longitude}'
-          '&key=AIzaSyCqIB5c5qFVJaz1dKdp2aO1hOuIY-9800E';  // API kalitingizni qo'ying
-      
+          '&key=AIzaSyCqIB5c5qFVJaz1dKdp2aO1hOuIY-9800E'; // API kalitingizni qo'ying
+
       final response = await http.get(Uri.parse(url));
       final data = json.decode(response.body);
-      
+
       if (data['status'] == 'OK') {
         // Marshrut koordinatalarini olish
-        List<LatLng> points = _decodePolyline(data['routes'][0]['overview_polyline']['points']);
-        
+        List<LatLng> points = _decodePolyline(
+          data['routes'][0]['overview_polyline']['points'],
+        );
+
         setState(() {
           _polylines.clear();
-          _polylines.add(maps.Polyline(
-            polylineId: maps.PolylineId('route'),
-            points: points,
-            color: _routeColor,
-            width: _routeWidth,
-          ));
+          _polylines.add(
+            maps.Polyline(
+              polylineId: maps.PolylineId('route'),
+              points: points,
+              color: _routeColor,
+              width: _routeWidth,
+            ),
+          );
         });
       } else {
         _showErrorSnackbar("Marshrut topilmadi");
@@ -313,13 +325,13 @@ class _TaxiOrderScreenState extends State<TaxiOrderScreen>
       _showErrorSnackbar("Marshrut chizishda xatolik");
     }
   }
-  
-  /// YANGI: Polylineni dekodlash funksiyasi
+
+  /// Polylineni dekodlash funksiyasi
   List<LatLng> _decodePolyline(String encoded) {
     List<LatLng> points = [];
     int index = 0, len = encoded.length;
     int lat = 0, lng = 0;
-    
+
     while (index < len) {
       int b, shift = 0, result = 0;
       do {
@@ -329,7 +341,7 @@ class _TaxiOrderScreenState extends State<TaxiOrderScreen>
       } while (b >= 0x20);
       int dlat = ((result & 1) != 0 ? ~(result >> 1) : (result >> 1));
       lat += dlat;
-      
+
       shift = 0;
       result = 0;
       do {
@@ -339,10 +351,10 @@ class _TaxiOrderScreenState extends State<TaxiOrderScreen>
       } while (b >= 0x20);
       int dlng = ((result & 1) != 0 ? ~(result >> 1) : (result >> 1));
       lng += dlng;
-      
+
       points.add(LatLng(lat / 1E5, lng / 1E5));
     }
-    
+
     return points;
   }
 
@@ -358,25 +370,26 @@ class _TaxiOrderScreenState extends State<TaxiOrderScreen>
     }
   }
 
-  /// YANGI: Tanlangan manzilni tozalash funksiyasi (YANGILANDI)
+  /// Tanlangan manzilni tozalash funksiyasi
   void _clearSelectedDestination() {
     setState(() {
       _selectedDestination = null;
       _selectedDestinationAddress = null;
-      
-      // YANGI: Marshrutni tozalash
+      _destinationName = ""; // Manzil nomini ham tozalash
+
+      // Marshrutni tozalash
       _polylines.clear();
 
-      // YANGI: pickupni ham tozalaymiz
+      // pickupni ham tozalaymiz
       _savedPickupLocation = null;
       _savedPickupAddress = null;
-      
-      // YANGI: Tugmalarni faolsiz holatga keltirish
+
+      // Tugmalarni faolsiz holatga keltirish
       _isSignalButtonActive = false;
       _isAutoTaxiButtonActive = false;
       _isDriversButtonActive = false;
-      
-      // YANGI: Qidiruvni to'xtatish
+
+      // Qidiruvni to'xtatish
       _cancelSearch();
     });
   }
@@ -498,36 +511,29 @@ class _TaxiOrderScreenState extends State<TaxiOrderScreen>
     await _getAddressFromLatLng(_currentLocation!);
   }
 
-  /// YANGI: Xaritani zoom qilish (SEKINROQ, LEKIN RADIUSDA)
+  /// Xaritani zoom qilish (SEKINROQ, LEKIN RADIUSDA)
   Future<void> _animateCameraZoom(double zoomLevel) async {
     final controller = await _controllerGoogleMaps.future;
-    
+
     // Faqat 12.0 dan pastga zoom qilmaymiz (radiusdan tashqariga chiqmaslik uchun)
     final targetZoom = zoomLevel.clamp(12.0, 17.0);
-    
-    controller.animateCamera(
-      CameraUpdate.zoomTo(targetZoom),
-    );
+
+    controller.animateCamera(CameraUpdate.zoomTo(targetZoom));
   }
 
-  /// YANGI: Signal jo'natish funksiyasi
+  /// Signal jo'natish funksiyasi
   void _sendSignal() {
     if (!_isSignalButtonActive) return;
-    
+
     // Signal jo'natish parametrlarini so'rash dialogi
     _showSignalOptionsDialog();
   }
 
-  /// YANGI: Signal parametrlarini so'rash dialogi
+  /// Signal parametrlarini so'rash dialogi (YANGILANDI)
   void _showSignalOptionsDialog() {
     showDialog(
       context: context,
       builder: (BuildContext context) {
-        int passengerCount = 1;
-        String carType = "Standart";
-        bool hasLuggage = false;
-        bool isDriverEmpty = true;
-        
         return StatefulBuilder(
           builder: (context, setState) {
             return AlertDialog(
@@ -536,14 +542,30 @@ class _TaxiOrderScreenState extends State<TaxiOrderScreen>
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
+                    // YANGI: Yo'lovchi boradigan manzil nomi
+                    Padding(
+                      padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                      child: TextField(
+                        decoration: InputDecoration(
+                          labelText: "Yo'lovchi boradigan manzil nomi",
+                          border: OutlineInputBorder(),
+                        ),
+                        onChanged: (value) {
+                          setState(() {
+                            _destinationName = value;
+                          });
+                        },
+                      ),
+                    ),
+                    
                     // Yo'lovchilar soni
                     ListTile(
                       title: Text("Yo'lovchilar soni"),
                       trailing: DropdownButton<int>(
-                        value: passengerCount,
+                        value: _passengerCount,
                         onChanged: (value) {
                           setState(() {
-                            passengerCount = value!;
+                            _passengerCount = value!;
                           });
                         },
                         items: [1, 2, 3, 4, 5, 6].map((int value) {
@@ -554,18 +576,18 @@ class _TaxiOrderScreenState extends State<TaxiOrderScreen>
                         }).toList(),
                       ),
                     ),
-                    
-                    // Mashina turi
+
+                    // Mashina turi (YANGILANDI: faqat 2 ta variant)
                     ListTile(
                       title: Text("Mashina turi"),
                       trailing: DropdownButton<String>(
-                        value: carType,
+                        value: _carType,
                         onChanged: (value) {
                           setState(() {
-                            carType = value!;
+                            _carType = value!;
                           });
                         },
-                        items: ["Standart", "Komfort", "Biznes", "Miniyan"].map((String value) {
+                        items: ["Yengil", "Istalgan"].map((String value) {
                           return DropdownMenuItem<String>(
                             value: value,
                             child: Text(value),
@@ -573,28 +595,9 @@ class _TaxiOrderScreenState extends State<TaxiOrderScreen>
                         }).toList(),
                       ),
                     ),
+
+
                     
-                    // Yuk borligi
-                    SwitchListTile(
-                      title: Text("Yuk bor"),
-                      value: hasLuggage,
-                      onChanged: (value) {
-                        setState(() {
-                          hasLuggage = value;
-                        });
-                      },
-                    ),
-                    
-                    // Haydovchi bo'sh
-                    SwitchListTile(
-                      title: Text("Haydovchi bo'sh"),
-                      value: isDriverEmpty,
-                      onChanged: (value) {
-                        setState(() {
-                          isDriverEmpty = value;
-                        });
-                      },
-                    ),
                   ],
                 ),
               ),
@@ -608,7 +611,7 @@ class _TaxiOrderScreenState extends State<TaxiOrderScreen>
                 ElevatedButton(
                   onPressed: () {
                     Navigator.pop(context);
-                    _startSearchAnimation(passengerCount, carType, hasLuggage, isDriverEmpty);
+                    _startSearchAnimation();
                   },
                   child: Text("Qidirushni boshlash"),
                 ),
@@ -620,22 +623,23 @@ class _TaxiOrderScreenState extends State<TaxiOrderScreen>
     );
   }
 
-  /// YANGI: Qidiruv animatsiyasini boshlash (YANGILANDI)
-  void _startSearchAnimation(int passengerCount, String carType, bool hasLuggage, bool isDriverEmpty) {
+  /// Qidiruv animatsiyasini boshlash (YANGILANDI)
+  void _startSearchAnimation() {
     setState(() {
       _isSearching = true;
       _foundTaxisCount = 0;
       _showDriverFoundButton = false;
     });
-    
+
     // Animatsiya timerini boshlash (SEKINROQ)
     _searchAnimationTimer = Timer.periodic(Duration(milliseconds: 800), (timer) {
-      if (_searchZoomLevel > 12.0) { // 12.0 dan pastga tushmaymiz
+      if (_searchZoomLevel > 12.0) {
+        // 12.0 dan pastga tushmaymiz
         setState(() {
           _searchZoomLevel -= 0.3; // Sekinroq zoom
           _foundTaxisCount += 1; // Sekinroq taksi qo'shilishi
         });
-        
+
         // Xaritani zoom out qilish
         _animateCameraZoom(_searchZoomLevel);
       } else {
@@ -649,7 +653,7 @@ class _TaxiOrderScreenState extends State<TaxiOrderScreen>
     });
   }
 
-  /// YANGI: Qidiruvni bekor qilish
+  /// Qidiruvni bekor qilish
   void _cancelSearch() {
     _searchAnimationTimer?.cancel();
     setState(() {
@@ -658,56 +662,65 @@ class _TaxiOrderScreenState extends State<TaxiOrderScreen>
       _foundTaxisCount = 0;
       _showDriverFoundButton = false;
     });
-    
+
     // Xaritani asl holatiga qaytarish
     _goToCurrentLocation();
   }
 
-  /// YANGI: Eng yaqin haydovchiga xabar jo'natish
-  void _sendMessageToNearestDriver() {
-    // Bu yerda serverga so'rov jo'natiladi
-    // Hozircha faqat demo xabar ko'rsatamiz
-    _showErrorSnackbar("Eng yaqin haydovchiga xabar jo'natildi");
-    
-    // Keyin bosh sahifaga qaytish
-    setState(() {
-      _showDriverFoundButton = false;
-    });
-  }
+  /// Eng yaqin haydovchiga xabar jo'natish (YANGILANDI: malumotlarni habar shaklida yuborish)
+ void _sendMessageToNearestDriver() {
+  // Signal ma'lumotlarini tayyorlash
+  String message = """
+🚕 TAKSI SIFATI:
+📍 Qayerdan: $_savedPickupAddress
+📍 Qayerga: ${_destinationName.isNotEmpty ? _destinationName : _selectedDestinationAddress}
+👥 Yo'lovchilar: $_passengerCount
+🚗 Mashina turi: $_carType
+  """;
 
-  /// YANGI: Tugmalarni qurish (YANGILANDI - dastlabki ranglar bilan)
+  // Bu yerda serverga so'rov jo'natiladi (habar shaklida)
+  // Hozircha faqat demo xabar ko'rsatamiz
+  _showErrorSnackbar("Eng yaqin haydovchiga xabar jo'natildi:\n$message");
+
+  // Keyin bosh sahifaga qaytish
+  setState(() {
+    _showDriverFoundButton = false;
+  });
+}
+
+  /// Tugmalarni qurish
   Widget _buildButton(IconData icon, String label, bool isActive, VoidCallback onPressed) {
     return GestureDetector(
       onTap: onPressed,
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          // Tugma ikonkasi (dastlabki holat: oq fon, ko'k icon)
+          // Tugma ikonkasi 
           Container(
             width: 56,
             height: 56,
             decoration: BoxDecoration(
-              color: isActive ? Colors.blue : Colors.white, // Faol bo'lsa ko'k, bo'lmasa oq
+              color: isActive ? Colors.white : Colors.white.withAlpha(204), // Faol bo'lsa to'liq oq, bo'lmasa hiralashgan oq
               shape: BoxShape.circle,
               boxShadow: [
-                if (isActive) // Faol bo'lsa ko'k soya
+                if (isActive) // Faol bo'lsa ko'k soya (bosilganligini bildirish uchun)
                   BoxShadow(
-                    color: Colors.blue.withAlpha(150),
-                    blurRadius: 8,
-                    spreadRadius: 2,
+                    color: Colors.blue.withAlpha(100),
+                    blurRadius: 6,
+                    spreadRadius: 1,
                     offset: Offset(0, 2),
                   )
                 else // Faol bo'lmasa engil soya
                   BoxShadow(
-                    color: Colors.black12,
+                    color: Colors.black.withAlpha(26),
                     blurRadius: 4,
-                    offset: Offset(0, 2),
+                    offset: Offset(0, 1),
                   ),
               ],
             ),
             child: Icon(
               icon, 
-              color: isActive ? Colors.white : Colors.blue, // Faol bo'lsa oq icon, bo'lmasa ko'k
+              color: Colors.blue, // Har doim ko'k icon
               size: 28,
             ),
           ),
@@ -716,7 +729,7 @@ class _TaxiOrderScreenState extends State<TaxiOrderScreen>
           Text(
             label, 
             style: TextStyle(
-              color: isActive ? Colors.blue : Colors.white, // Faol bo'lsa ko'k, bo'lmasa oq
+              color: Colors.white, // Har doim oq matn
               fontSize: 14,
               fontWeight: isActive ? FontWeight.bold : FontWeight.normal,
             ),
@@ -810,7 +823,7 @@ class _TaxiOrderScreenState extends State<TaxiOrderScreen>
             onCameraMove:
                 (position) => _onCameraMove(), // Xarita harakatlanganda
             onCameraIdle: () => _onCameraIdle(), // Xarita to'xtaganda
-            polylines: _polylines, // YANGI: Marshrut chiziqlarini qo'shish
+            polylines: _polylines, // Marshrut chiziqlarini qo'shish
             padding: EdgeInsets.only(
               bottom:
                   MediaQuery.of(context).size.height / 2.5, // Pastki padding
@@ -879,7 +892,7 @@ class _TaxiOrderScreenState extends State<TaxiOrderScreen>
             ),
           ),
 
-          // YANGI: Qidiruv jarayonida bekor qilish tugmasi
+          // Qidiruv jarayonida bekor qilish tugmasi
           if (_isSearching)
             Positioned(
               top: 90,
@@ -891,7 +904,7 @@ class _TaxiOrderScreenState extends State<TaxiOrderScreen>
               ),
             ),
 
-          // YANGI: Qidiruv natijasi - topilgan taksilar soni
+          // Qidiruv natijasi - topilgan taksilar soni
           if (_isSearching)
             Positioned(
               top: 25,
@@ -945,40 +958,28 @@ class _TaxiOrderScreenState extends State<TaxiOrderScreen>
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  const SizedBox(height: 10),
-                  
-                  // YANGI: Signal jo'natish tugmasi (faqat ikkala manzil kiritilganda)
-                  if (_isSignalButtonActive && _showDriverFoundButton)
-                    Container(
-                      width: double.infinity,
-                      margin: const EdgeInsets.only(bottom: 15),
-                      child: ElevatedButton(
-                        onPressed: _sendMessageToNearestDriver,
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.green,
-                          padding: EdgeInsets.symmetric(vertical: 16),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(15),
-                          ),
-                        ),
-                        child: Text(
-                          "Eng yaqin haydovchiga xabar jo'natish",
-                          style: TextStyle(
-                            color: Colors.white, 
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ),
-                    ),
-                  
                   // Tugmalar qatori
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      _buildButton(Icons.wifi, "Signal jo'natish", _isSignalButtonActive, _sendSignal),
-                      _buildButton(Icons.local_taxi, "Avtomatik taksi", _isAutoTaxiButtonActive, () {}),
-                      _buildButton(Icons.groups, "Haydovchilar", _isDriversButtonActive, () {}),
+                      _buildButton(
+                        Icons.wifi,
+                        "Signal jo'natish",
+                        _isSignalButtonActive,
+                        _sendSignal,
+                      ),
+                      _buildButton(
+                        Icons.local_taxi,
+                        "Avtomatik taksi",
+                        _isAutoTaxiButtonActive,
+                        () {},
+                      ),
+                      _buildButton(
+                        Icons.groups,
+                        "Haydovchilar",
+                        _isDriversButtonActive,
+                        () {},
+                      ),
                     ],
                   ),
                   const SizedBox(height: 20),
@@ -987,7 +988,10 @@ class _TaxiOrderScreenState extends State<TaxiOrderScreen>
                   Container(
                     width: double.infinity,
                     margin: const EdgeInsets.only(bottom: 5),
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 14,
+                    ),
                     decoration: BoxDecoration(
                       color: Colors.white,
                       borderRadius: BorderRadius.circular(20),
@@ -1004,37 +1008,38 @@ class _TaxiOrderScreenState extends State<TaxiOrderScreen>
                         Icon(Icons.location_on, color: Colors.blue, size: 24),
                         const SizedBox(width: 12),
                         Expanded(
-                          child: _isLoadingAddress
-                              ? Row(
-                                  children: [
-                                    SizedBox(
-                                      width: 20,
-                                      height: 20,
-                                      child: CircularProgressIndicator(
-                                        strokeWidth: 2,
-                                        color: Colors.blue,
+                          child:
+                              _isLoadingAddress
+                                  ? Row(
+                                    children: [
+                                      SizedBox(
+                                        width: 20,
+                                        height: 20,
+                                        child: CircularProgressIndicator(
+                                          strokeWidth: 2,
+                                          color: Colors.blue,
+                                        ),
                                       ),
-                                    ),
-                                    const SizedBox(width: 12),
-                                    Text(
-                                      "Manzil aniqlanmoqda...",
-                                      style: TextStyle(
-                                        color: Colors.grey.shade600,
-                                        fontSize: 16,
+                                      const SizedBox(width: 12),
+                                      Text(
+                                        "Manzil aniqlanmoqda...",
+                                        style: TextStyle(
+                                          color: Colors.grey.shade600,
+                                          fontSize: 16,
+                                        ),
                                       ),
+                                    ],
+                                  )
+                                  : Text(
+                                    _savedPickupAddress ?? _currentAddress,
+                                    style: TextStyle(
+                                      color: Colors.black,
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.w500,
                                     ),
-                                  ],
-                                )
-                              : Text(
-                                  _savedPickupAddress ?? _currentAddress,
-                                  style: TextStyle(
-                                    color: Colors.black,
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.w500,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
                                   ),
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                ),
                         ),
                       ],
                     ),
@@ -1043,9 +1048,10 @@ class _TaxiOrderScreenState extends State<TaxiOrderScreen>
 
                   // YO'NALISHNI KIRITISH KONTEYNERI
                   GestureDetector(
-                    onTap: _selectedDestinationAddress == null
-                        ? _handleDestinationSelection
-                        : null,
+                    onTap:
+                        _selectedDestinationAddress == null
+                            ? _handleDestinationSelection
+                            : null,
                     child: Container(
                       height: 50,
                       padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -1063,8 +1069,13 @@ class _TaxiOrderScreenState extends State<TaxiOrderScreen>
                       child: Row(
                         children: [
                           Icon(
-                            _selectedDestinationAddress != null ? Icons.location_on : Icons.search,
-                            color: _selectedDestinationAddress != null ? Colors.blue : Colors.grey,
+                            _selectedDestinationAddress != null
+                                ? Icons.location_on
+                                : Icons.search,
+                            color:
+                                _selectedDestinationAddress != null
+                                    ? Colors.blue
+                                    : Colors.grey,
                             size: 24,
                           ),
                           const SizedBox(width: 12),
@@ -1072,13 +1083,18 @@ class _TaxiOrderScreenState extends State<TaxiOrderScreen>
                             child: SingleChildScrollView(
                               scrollDirection: Axis.horizontal,
                               child: Text(
-                                _selectedDestinationAddress ?? "Yo'nalishni kiriting",
+                                _selectedDestinationAddress ??
+                                    "Yo'nalishni kiriting",
                                 style: TextStyle(
-                                  color: _selectedDestinationAddress != null ? Colors.black : Colors.grey,
+                                  color:
+                                      _selectedDestinationAddress != null
+                                          ? Colors.black
+                                          : Colors.grey,
                                   fontSize: 16,
-                                  fontWeight: _selectedDestinationAddress != null
-                                      ? FontWeight.w500
-                                      : FontWeight.normal,
+                                  fontWeight:
+                                      _selectedDestinationAddress != null
+                                          ? FontWeight.w500
+                                          : FontWeight.normal,
                                 ),
                               ),
                             ),
@@ -1094,6 +1110,33 @@ class _TaxiOrderScreenState extends State<TaxiOrderScreen>
                       ),
                     ),
                   ),
+
+                  const SizedBox(height: 15),
+
+                  // Signal jo'natish tugmasi (faqat ikkala manzil kiritilganda)
+                  if (_isSignalButtonActive && _showDriverFoundButton)
+                    Container(
+                      width: double.infinity,
+                      margin: const EdgeInsets.only(bottom: 10),
+                      child: ElevatedButton(
+                        onPressed: _sendMessageToNearestDriver,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Color(0xFF13B58C),
+                          padding: EdgeInsets.symmetric(vertical: 16),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(15),
+                          ),
+                        ),
+                        child: Text(
+                          "Eng yaqin haydovchiga xabar jo'natish",
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                    ),
                 ],
               ),
             ),
