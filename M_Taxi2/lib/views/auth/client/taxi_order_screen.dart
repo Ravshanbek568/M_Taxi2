@@ -151,6 +151,16 @@ class _TaxiOrderScreenState extends State<TaxiOrderScreen>
   int _passengerCount = 1; // Yo'lovchilar soni
   String _carType = "Yengil"; // Mashina turi (1-Yengil, 2-Istalgan)
 
+  // Avtomatik taksi parametrlari
+  String _selectedServiceType = "Ekonom"; // Xizmat turi
+  String _selectedPaymentType = "Naqt"; // To'lov turi
+
+  // Buyurtma holati
+  bool _isOrderPlaced = false;
+  bool _isOrderAccepted = false;
+  Map<String, dynamic>? _orderDetails;
+  Timer? _orderAcceptanceTimer;
+
   // Andijon shahrini boshlang'ich nuqta sifatida belgilash
   static const CameraPosition _initialCameraPosition = CameraPosition(
     target: LatLng(40.8008333, 72.9881418), // Andijon koordinatalari
@@ -183,6 +193,7 @@ class _TaxiOrderScreenState extends State<TaxiOrderScreen>
   void dispose() {
     _animationController.dispose(); // Animatsiya kontrollerini tozalash
     _searchAnimationTimer?.cancel(); // Qidiruv animatsiyasini tozalash
+    _orderAcceptanceTimer?.cancel(); // Buyurtma qabul qilish timerini tozalash
     super.dispose();
   }
 
@@ -439,7 +450,7 @@ class _TaxiOrderScreenState extends State<TaxiOrderScreen>
         }
         // Shahar nomi ham aniqlanmagan bo'lsa
         else {
-          displayAddress = "Ko'rdinatangiz";
+            displayAddress = "Ko'rdinatangiz";
         }
 
         // UI ni yangilash
@@ -529,6 +540,22 @@ class _TaxiOrderScreenState extends State<TaxiOrderScreen>
     _showSignalOptionsDialog();
   }
 
+  /// Avtomatik taksi funksiyasi
+  void _orderAutoTaxi() {
+    if (!_isAutoTaxiButtonActive) return;
+
+    // Avtomatik taksi parametrlarini so'rash dialogi
+    _showAutoTaxiOptionsDialog();
+  }
+
+  /// Haydovchilarni ko'rsatish funksiyasi
+  void _showAvailableDrivers() {
+    if (!_isDriversButtonActive) return;
+
+    // Mavjud haydovchilarni ko'rsatish
+    _showDriversListDialog();
+  }
+
   /// Signal parametrlarini so'rash dialogi (YANGILANDI)
   void _showSignalOptionsDialog() {
     showDialog(
@@ -547,7 +574,7 @@ class _TaxiOrderScreenState extends State<TaxiOrderScreen>
                       padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                       child: TextField(
                         decoration: InputDecoration(
-                          labelText: "Yo'lovchi boradigan manzil nomi",
+                          labelText: "haydovchiga habar yozing",
                           border: OutlineInputBorder(),
                         ),
                         onChanged: (value) {
@@ -595,9 +622,6 @@ class _TaxiOrderScreenState extends State<TaxiOrderScreen>
                         }).toList(),
                       ),
                     ),
-
-
-                    
                   ],
                 ),
               ),
@@ -621,6 +645,217 @@ class _TaxiOrderScreenState extends State<TaxiOrderScreen>
         );
       },
     );
+  }
+
+  /// Avtomatik taksi parametrlarini so'rash dialogi
+  void _showAutoTaxiOptionsDialog() {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return StatefulBuilder(
+          builder: (context, setState) {
+            return AlertDialog(
+              title: Text("Avtomatik taksi parametrlari"),
+              content: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    // Xizmat turi
+                    ListTile(
+                      title: Text("Xizmat turi"),
+                      trailing: DropdownButton<String>(
+                        value: _selectedServiceType,
+                        onChanged: (value) {
+                          setState(() {
+                            _selectedServiceType = value!;
+                          });
+                        },
+                        items: ["Ekonom", "Standart", "Komfort"].map((String value) {
+                          return DropdownMenuItem<String>(
+                            value: value,
+                            child: Text(value),
+                          );
+                        }).toList(),
+                      ),
+                    ),
+
+                    // To'lov turi
+                    ListTile(
+                      title: Text("To'lov turi"),
+                      trailing: DropdownButton<String>(
+                        value: _selectedPaymentType,
+                        onChanged: (value) {
+                          setState(() {
+                            _selectedPaymentType = value!;
+                          });
+                        },
+                        items: ["Naqt", "Karta orqali", "Ilova orqali"].map((String value) {
+                          return DropdownMenuItem<String>(
+                            value: value,
+                            child: Text(value),
+                          );
+                        }).toList(),
+                      ),
+                    ),
+
+                    // Haydovchi uchun izoh
+                    Padding(
+                      padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                      child: TextField(
+                        decoration: InputDecoration(
+                          labelText: "Haydovchi uchun izoh (ixtiyoriy)",
+                          border: OutlineInputBorder(),
+                        ),
+                        maxLines: 3,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () {
+                    Navigator.pop(context);
+                  },
+                  child: Text("Bekor qilish"),
+                ),
+                ElevatedButton(
+                  onPressed: () {
+                    Navigator.pop(context);
+                    _startAutoTaxiSearch();
+                  },
+                  child: Text("Qidiruvni boshlash"),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+
+  /// Haydovchilar ro'yxatini ko'rsatish dialogi
+  void _showDriversListDialog() {
+    // Demo haydovchilar ma'lumotlari
+    List<Map<String, dynamic>> demoDrivers = [
+      {
+        'name': 'Ali Valiyev',
+        'car': 'Cobalt',
+        'color': 'Oq',
+        'number': '01 A 123 AA',
+        'rating': 4.8,
+        'distance': '1.2 km',
+        'price': '15,000 so\'m'
+      },
+      {
+        'name': 'Hasan Hasanov',
+        'car': 'Nexia',
+        'color': 'Qora',
+        'number': '01 B 456 BB',
+        'rating': 4.5,
+        'distance': '0.8 km',
+        'price': '14,000 so\'m'
+      },
+      {
+        'name': 'Olim Olimov',
+        'car': 'Gentra',
+        'color': 'Kumush',
+        'number': '01 C 789 CC',
+        'rating': 4.9,
+        'distance': '2.1 km',
+        'price': '16,000 so\'m'
+      }
+    ];
+
+    showDialog(
+  context: context,
+  builder: (BuildContext context) {
+    return AlertDialog(
+      title: Text("Mavjud haydovchilar"),
+      content: SizedBox( // Container o'rniga SizedBox ishlatildi
+        width: double.maxFinite,
+        child: ListView.builder(
+          shrinkWrap: true,
+          itemCount: demoDrivers.length,
+          itemBuilder: (context, index) {
+            final driver = demoDrivers[index];
+            return ListTile(
+              leading: Icon(Icons.person, size: 40),
+              title: Text(driver['name']),
+              subtitle: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text("${driver['car']} • ${driver['color']} • ${driver['number']}"),
+                  Row(
+                    children: [
+                      Icon(Icons.star, color: Colors.amber, size: 16),
+                      Text(" ${driver['rating']}"),
+                      SizedBox(width: 10),
+                      Icon(Icons.directions_car, size: 16),
+                      Text(" ${driver['distance']}"),
+                    ],
+                  ),
+                  Text("${driver['price']}", style: TextStyle(fontWeight: FontWeight.bold)),
+                ],
+              ),
+              trailing: ElevatedButton(
+                onPressed: () {
+                  Navigator.pop(context);
+                  _selectDriver(driver);
+                },
+                child: Text("Tanlash"),
+              ),
+            );
+          },
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () {
+            Navigator.pop(context);
+          },
+          child: Text("Bekor qilish"),
+        ),
+      ],
+    );
+  },
+);
+  }
+
+  /// Haydovchini tanlash funksiyasi
+  void _selectDriver(Map<String, dynamic> driver) {
+    // Haydovchini tanlaganida qidiruvni boshlash
+    _startSearchAnimation();
+  }
+
+  /// Avtomatik taksi qidiruvini boshlash
+  void _startAutoTaxiSearch() {
+    setState(() {
+      _isSearching = true;
+      _foundTaxisCount = 0;
+      _showDriverFoundButton = false;
+    });
+
+    // Animatsiya timerini boshlash (SEKINROQ)
+    _searchAnimationTimer = Timer.periodic(Duration(milliseconds: 800), (timer) {
+      if (_searchZoomLevel > 12.0) {
+        // 12.0 dan pastga tushmaymiz
+        setState(() {
+          _searchZoomLevel -= 0.3; // Sekinroq zoom
+          _foundTaxisCount += 1; // Sekinroq taksi qo'shilishi
+        });
+
+        // Xaritani zoom out qilish
+        _animateCameraZoom(_searchZoomLevel);
+      } else {
+        // Qidiruv tugaganda
+        timer.cancel();
+        setState(() {
+          _isSearching = false;
+          _showDriverFoundButton = true;
+        });
+      }
+    });
   }
 
   /// Qidiruv animatsiyasini boshlash (YANGILANDI)
@@ -688,6 +923,117 @@ class _TaxiOrderScreenState extends State<TaxiOrderScreen>
   });
 }
 
+  /// Buyurtma berish funksiyasi
+  void _placeOrder() {
+    setState(() {
+      _isOrderPlaced = true;
+      _isOrderAccepted = false;
+      _showDriverFoundButton = false;
+    });
+
+    // Buyurtma qabul qilinishini simulyatsiya qilish
+    _orderAcceptanceTimer = Timer(Duration(seconds: 3), () {
+      setState(() {
+        _isOrderAccepted = true;
+        
+        // Demo buyurtma ma'lumotlari
+        _orderDetails = {
+          'driverName': 'Ali Valiyev',
+          'driverPhone': '+998901234567',
+          'carModel': 'Cobalt',
+          'carColor': 'Oq',
+          'carNumber': '01 A 123 AA',
+          'arrivalTime': '5 daqiqa',
+          'orderTime': DateTime.now().toString(),
+          'from': _savedPickupAddress,
+          'to': _selectedDestinationAddress,
+          'serviceType': _selectedServiceType,
+          'paymentType': _selectedPaymentType,
+          'price': '15,000 so\'m',
+          'license': 'Andijon shahar tumani'
+        };
+      });
+    });
+  }
+
+  /// Buyurtmani bekor qilish funksiyasi
+  void _cancelOrder() {
+    _orderAcceptanceTimer?.cancel();
+    setState(() {
+      _isOrderPlaced = false;
+      _isOrderAccepted = false;
+      _orderDetails = null;
+    });
+    
+    _showErrorSnackbar("Buyurtma bekor qilindi");
+  }
+
+  /// Haydovchiga qo'ng'iroq qilish funksiyasi
+  void _callDriver() {
+    // Qo'ng'iroq qilish logikasi
+    _showErrorSnackbar("Haydovchiga qo'ng'iroq qilinmoqda: ${_orderDetails?['driverPhone']}");
+  }
+
+  /// Buyurtma tafsilotlarini ko'rsatish funksiyasi
+  void _showOrderDetails() {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Text("Buyurtma tafsilotlari"),
+          content: SingleChildScrollView(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                if (_orderDetails != null) ...[
+                  _buildDetailItem("Haydovchi", _orderDetails!['driverName']),
+                  _buildDetailItem("Buyurtma vaqti", _orderDetails!['orderTime']),
+                  _buildDetailItem("Qayerdan", _orderDetails!['from']),
+                  _buildDetailItem("Qayerga", _orderDetails!['to']),
+                  _buildDetailItem("Mashina", "${_orderDetails!['carModel']} ${_orderDetails!['carColor']} ${_orderDetails!['carNumber']}"),
+                  _buildDetailItem("Xizmat turi", _orderDetails!['serviceType']),
+                  _buildDetailItem("To'lov turi", _orderDetails!['paymentType']),
+                  _buildDetailItem("Narx", _orderDetails!['price']),
+                  _buildDetailItem("Litsenziya", _orderDetails!['license']),
+                ]
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.pop(context);
+              },
+              child: Text("Yopish"),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  /// Tafsilotlar elementi qurish
+  Widget _buildDetailItem(String title, String value) {
+    return Padding(
+      padding: EdgeInsets.symmetric(vertical: 8),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            title,
+            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+          ),
+          SizedBox(height: 4),
+          Text(
+            value,
+            style: TextStyle(fontSize: 14),
+          ),
+        ],
+      ),
+    );
+  }
+
   /// Tugmalarni qurish
   Widget _buildButton(IconData icon, String label, bool isActive, VoidCallback onPressed) {
     return GestureDetector(
@@ -700,17 +1046,17 @@ class _TaxiOrderScreenState extends State<TaxiOrderScreen>
             width: 56,
             height: 56,
             decoration: BoxDecoration(
-              color: isActive ? Colors.white : Colors.white.withAlpha(204), // Faol bo'lsa to'liq oq, bo'lmasa hiralashgan oq
+              color: isActive ? Colors.white : Colors.white.withAlpha(204),
               shape: BoxShape.circle,
               boxShadow: [
-                if (isActive) // Faol bo'lsa ko'k soya (bosilganligini bildirish uchun)
+                if (isActive)
                   BoxShadow(
                     color: Colors.blue.withAlpha(100),
                     blurRadius: 6,
                     spreadRadius: 1,
                     offset: Offset(0, 2),
                   )
-                else // Faol bo'lmasa engil soya
+                else
                   BoxShadow(
                     color: Colors.black.withAlpha(26),
                     blurRadius: 4,
@@ -720,16 +1066,16 @@ class _TaxiOrderScreenState extends State<TaxiOrderScreen>
             ),
             child: Icon(
               icon, 
-              color: Colors.blue, // Har doim ko'k icon
+              color: Colors.blue,
               size: 28,
             ),
           ),
-          const SizedBox(height: 6),
+          SizedBox(height: 6),
           // Tugma matni
           Text(
             label, 
             style: TextStyle(
-              color: Colors.white, // Har doim oq matn
+              color: Colors.white,
               fontSize: 14,
               fontWeight: isActive ? FontWeight.bold : FontWeight.normal,
             ),
@@ -809,30 +1155,23 @@ class _TaxiOrderScreenState extends State<TaxiOrderScreen>
         children: [
           // GOOGLE XARITA KO'RINISHI
           GoogleMap(
-            mapType: MapType.normal, // Xarita turi
-            initialCameraPosition:
-                _initialCameraPosition, // Boshlang'ich pozitsiya
-            myLocationEnabled: true, // Joriy joylashuvni ko'rsatish
-            myLocationButtonEnabled:
-                false, // Standart joylashuv tugmasini o'chirish
-            zoomControlsEnabled: false, // Zoom tugmalarini o'chirish
-            onMapCreated:
-                (controller) => _controllerGoogleMaps.complete(
-                  controller,
-                ), // Kontroller yaratilganda
-            onCameraMove:
-                (position) => _onCameraMove(), // Xarita harakatlanganda
-            onCameraIdle: () => _onCameraIdle(), // Xarita to'xtaganda
-            polylines: _polylines, // Marshrut chiziqlarini qo'shish
+            mapType: MapType.normal,
+            initialCameraPosition: _initialCameraPosition,
+            myLocationEnabled: true,
+            myLocationButtonEnabled: false,
+            zoomControlsEnabled: false,
+            onMapCreated: (controller) => _controllerGoogleMaps.complete(controller),
+            onCameraMove: (position) => _onCameraMove(),
+            onCameraIdle: () => _onCameraIdle(),
+            polylines: _polylines,
             padding: EdgeInsets.only(
-              bottom:
-                  MediaQuery.of(context).size.height / 2.5, // Pastki padding
+              bottom: MediaQuery.of(context).size.height / 2.5,
             ),
           ),
 
           // MARKER VA SOYA ANIMATSIYASI
           Align(
-            alignment: Alignment(0.0, -0.5), // Markerni markazga joylash
+            alignment: Alignment(0.0, -0.5),
             child: AnimatedBuilder(
               animation: _animationController,
               builder: (context, child) {
@@ -843,12 +1182,9 @@ class _TaxiOrderScreenState extends State<TaxiOrderScreen>
                     children: [
                       // Marker rasmi
                       Transform.translate(
-                        offset: Offset(
-                          0,
-                          -_liftAnimation.value,
-                        ), // Ko'tarilish effekti
+                        offset: Offset(0, -_liftAnimation.value),
                         child: Image.asset(
-                          'assets/images/men.png', // Marker rasmi
+                          'assets/images/men.png',
                           width: 80,
                           height: 80,
                         ),
@@ -874,10 +1210,9 @@ class _TaxiOrderScreenState extends State<TaxiOrderScreen>
             top: 25,
             left: 15,
             child: FloatingActionButton(
-              onPressed:
-                  () => Navigator.pop(context), // Oldingi ekranga qaytish
+              onPressed: () => Navigator.pop(context),
               backgroundColor: Colors.white,
-              child: const Icon(Icons.arrow_back, color: Colors.blue),
+              child: Icon(Icons.arrow_back, color: Colors.blue),
             ),
           ),
 
@@ -886,9 +1221,9 @@ class _TaxiOrderScreenState extends State<TaxiOrderScreen>
             top: 25,
             right: 15,
             child: FloatingActionButton(
-              onPressed: _goToCurrentLocation, // Joriy joylashuvga o'tish
+              onPressed: _goToCurrentLocation,
               backgroundColor: Colors.white,
-              child: const Icon(Icons.my_location, color: Colors.blue),
+              child: Icon(Icons.my_location, color: Colors.blue),
             ),
           ),
 
@@ -900,7 +1235,7 @@ class _TaxiOrderScreenState extends State<TaxiOrderScreen>
               child: FloatingActionButton(
                 onPressed: _cancelSearch,
                 backgroundColor: Colors.white,
-                child: const Icon(Icons.close, color: Colors.red),
+                child: Icon(Icons.close, color: Colors.red),
               ),
             ),
 
@@ -932,24 +1267,107 @@ class _TaxiOrderScreenState extends State<TaxiOrderScreen>
               ),
             ),
 
-          // PASTKI PANEL (Bottom Bar) - YANGILANDI
+          // Buyurtma qabul qilinganda haydovchi ma'lumotlari
+          if (_isOrderAccepted && _orderDetails != null)
+            Positioned(
+              bottom: MediaQuery.of(context).size.height / 2.5 + 20,
+              left: 20,
+              right: 20,
+              child: Container(
+                padding: EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(15),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black26,
+                      blurRadius: 10,
+                      offset: Offset(0, 4),
+                    ),
+                  ],
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      "Haydovchingiz yo'lda",
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    SizedBox(height: 10),
+                    Row(
+                      children: [
+                        Icon(Icons.person, size: 40),
+                        SizedBox(width: 10),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                _orderDetails!['driverName'],
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                              Text(
+                                "${_orderDetails!['carModel']} • ${_orderDetails!['carColor']} • ${_orderDetails!['carNumber']}",
+                                style: TextStyle(fontSize: 14),
+                              ),
+                            ],
+                          ),
+                        ),
+                        IconButton(
+                          icon: Icon(Icons.phone, color: Colors.green),
+                          onPressed: _callDriver,
+                        ),
+                      ],
+                    ),
+                    SizedBox(height: 10),
+                    Text(
+                      "Yetib borish: ${_orderDetails!['arrivalTime']}",
+                      style: TextStyle(fontSize: 14, color: Colors.green),
+                    ),
+                    SizedBox(height: 10),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        ElevatedButton(
+                          onPressed: _showOrderDetails,
+                          child: Text("Batafsil ma'lumot"),
+                        ),
+                        TextButton(
+                          onPressed: _cancelOrder,
+                          child: Text(
+                            "Bekor qilish",
+                            style: TextStyle(color: Colors.red),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ),
+
+          // PASTKI PANEL (Bottom Bar)
           Align(
             alignment: Alignment.bottomCenter,
             child: Container(
               decoration: BoxDecoration(
                 color: Colors.blue.shade600,
-                borderRadius: const BorderRadius.vertical(
-                  top: Radius.circular(30),
-                ),
+                borderRadius: BorderRadius.vertical(top: Radius.circular(30)),
                 boxShadow: [
                   BoxShadow(
                     color: Color.fromRGBO(0, 0, 0, 0.1),
                     blurRadius: 8,
-                    offset: const Offset(0, -2),
+                    offset: Offset(0, -2),
                   ),
                 ],
               ),
-              padding: const EdgeInsets.only(
+              padding: EdgeInsets.only(
                 left: 20,
                 right: 20,
                 top: 16,
@@ -972,26 +1390,23 @@ class _TaxiOrderScreenState extends State<TaxiOrderScreen>
                         Icons.local_taxi,
                         "Avtomatik taksi",
                         _isAutoTaxiButtonActive,
-                        () {},
+                        _orderAutoTaxi,
                       ),
                       _buildButton(
                         Icons.groups,
                         "Haydovchilar",
                         _isDriversButtonActive,
-                        () {},
+                        _showAvailableDrivers,
                       ),
                     ],
                   ),
-                  const SizedBox(height: 20),
+                  SizedBox(height: 20),
 
                   // JORIY MANZIL KONTEYNERI
                   Container(
                     width: double.infinity,
-                    margin: const EdgeInsets.only(bottom: 5),
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 14,
-                    ),
+                    margin: EdgeInsets.only(bottom: 5),
+                    padding: EdgeInsets.symmetric(horizontal: 16, vertical: 14),
                     decoration: BoxDecoration(
                       color: Colors.white,
                       borderRadius: BorderRadius.circular(20),
@@ -1006,55 +1421,53 @@ class _TaxiOrderScreenState extends State<TaxiOrderScreen>
                     child: Row(
                       children: [
                         Icon(Icons.location_on, color: Colors.blue, size: 24),
-                        const SizedBox(width: 12),
+                        SizedBox(width: 12),
                         Expanded(
-                          child:
-                              _isLoadingAddress
-                                  ? Row(
-                                    children: [
-                                      SizedBox(
-                                        width: 20,
-                                        height: 20,
-                                        child: CircularProgressIndicator(
-                                          strokeWidth: 2,
-                                          color: Colors.blue,
-                                        ),
+                          child: _isLoadingAddress
+                              ? Row(
+                                  children: [
+                                    SizedBox(
+                                      width: 20,
+                                      height: 20,
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2,
+                                        color: Colors.blue,
                                       ),
-                                      const SizedBox(width: 12),
-                                      Text(
-                                        "Manzil aniqlanmoqda...",
-                                        style: TextStyle(
-                                          color: Colors.grey.shade600,
-                                          fontSize: 16,
-                                        ),
-                                      ),
-                                    ],
-                                  )
-                                  : Text(
-                                    _savedPickupAddress ?? _currentAddress,
-                                    style: TextStyle(
-                                      color: Colors.black,
-                                      fontSize: 16,
-                                      fontWeight: FontWeight.w500,
                                     ),
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
+                                    SizedBox(width: 12),
+                                    Text(
+                                      "Manzil aniqlanmoqda...",
+                                      style: TextStyle(
+                                        color: Colors.grey.shade600,
+                                        fontSize: 16,
+                                      ),
+                                    ),
+                                  ],
+                                )
+                              : Text(
+                                  _savedPickupAddress ?? _currentAddress,
+                                  style: TextStyle(
+                                    color: Colors.black,
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w500,
                                   ),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
                         ),
                       ],
                     ),
                   ),
-                  const SizedBox(height: 10),
+                  SizedBox(height: 10),
 
                   // YO'NALISHNI KIRITISH KONTEYNERI
                   GestureDetector(
-                    onTap:
-                        _selectedDestinationAddress == null
-                            ? _handleDestinationSelection
-                            : null,
+                    onTap: _selectedDestinationAddress == null
+                        ? _handleDestinationSelection
+                        : null,
                     child: Container(
                       height: 50,
-                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      padding: EdgeInsets.symmetric(horizontal: 16),
                       decoration: BoxDecoration(
                         color: Colors.white,
                         borderRadius: BorderRadius.circular(20),
@@ -1072,13 +1485,12 @@ class _TaxiOrderScreenState extends State<TaxiOrderScreen>
                             _selectedDestinationAddress != null
                                 ? Icons.location_on
                                 : Icons.search,
-                            color:
-                                _selectedDestinationAddress != null
-                                    ? Colors.blue
-                                    : Colors.grey,
+                            color: _selectedDestinationAddress != null
+                                ? Colors.blue
+                                : Colors.grey,
                             size: 24,
                           ),
-                          const SizedBox(width: 12),
+                          SizedBox(width: 12),
                           Expanded(
                             child: SingleChildScrollView(
                               scrollDirection: Axis.horizontal,
@@ -1086,15 +1498,13 @@ class _TaxiOrderScreenState extends State<TaxiOrderScreen>
                                 _selectedDestinationAddress ??
                                     "Yo'nalishni kiriting",
                                 style: TextStyle(
-                                  color:
-                                      _selectedDestinationAddress != null
-                                          ? Colors.black
-                                          : Colors.grey,
+                                  color: _selectedDestinationAddress != null
+                                      ? Colors.black
+                                      : Colors.grey,
                                   fontSize: 16,
-                                  fontWeight:
-                                      _selectedDestinationAddress != null
-                                          ? FontWeight.w500
-                                          : FontWeight.normal,
+                                  fontWeight: _selectedDestinationAddress != null
+                                      ? FontWeight.w500
+                                      : FontWeight.normal,
                                 ),
                               ),
                             ),
@@ -1111,13 +1521,13 @@ class _TaxiOrderScreenState extends State<TaxiOrderScreen>
                     ),
                   ),
 
-                  const SizedBox(height: 15),
+                  SizedBox(height: 15),
 
-                  // Signal jo'natish tugmasi (faqat ikkala manzil kiritilganda)
+                  // Signal jo'natish tugmasi
                   if (_isSignalButtonActive && _showDriverFoundButton)
                     Container(
                       width: double.infinity,
-                      margin: const EdgeInsets.only(bottom: 10),
+                      margin: EdgeInsets.only(bottom: 10),
                       child: ElevatedButton(
                         onPressed: _sendMessageToNearestDriver,
                         style: ElevatedButton.styleFrom(
@@ -1135,6 +1545,58 @@ class _TaxiOrderScreenState extends State<TaxiOrderScreen>
                             fontWeight: FontWeight.bold,
                           ),
                         ),
+                      ),
+                    ),
+
+                  // Avtomatik taksi uchun buyurtma berish tugmasi
+                  if (_isAutoTaxiButtonActive && _showDriverFoundButton)
+                    Container(
+                      width: double.infinity,
+                      margin: EdgeInsets.only(bottom: 10),
+                      child: ElevatedButton(
+                        onPressed: _placeOrder,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Color(0xFF13B58C),
+                          padding: EdgeInsets.symmetric(vertical: 16),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(15),
+                          ),
+                        ),
+                        child: Text(
+                          "Sizga mos haydovchini buyurtma qiling",
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                    ),
+
+                  // Buyurtma yuborilayotganida kutish animatsiyasi
+                  if (_isOrderPlaced && !_isOrderAccepted)
+                    Container(
+                      width: double.infinity,
+                      margin: EdgeInsets.only(bottom: 10),
+                      padding: EdgeInsets.symmetric(vertical: 16),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(15),
+                      ),
+                      child: Column(
+                        children: [
+                          CircularProgressIndicator(
+                            valueColor: AlwaysStoppedAnimation<Color>(Colors.blue),
+                          ),
+                          SizedBox(height: 10),
+                          Text(
+                            "Buyurtma yuborilmoqda...",
+                            style: TextStyle(
+                              color: Colors.blue,
+                              fontSize: 16,
+                            ),
+                          ),
+                        ],
                       ),
                     ),
                 ],
