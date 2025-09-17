@@ -523,7 +523,7 @@ class _TaxiOrderScreenState extends State<TaxiOrderScreen>
 
   /// Marshrut chizish funksiyasi
   Future<void> _drawRoute() async {
-    if (_savedPickupLocation == null || _selectedDestination == null) return;
+    if (_savedPickupLocation == null || _selectedDestination != null) return;
 
     try {
       final String url =
@@ -860,7 +860,7 @@ class _TaxiOrderScreenState extends State<TaxiOrderScreen>
                             );
                         });
                         _calculateSignalPrice();
-                      },
+                        },
                     ),
 
                     ExpansionTile(
@@ -1433,45 +1433,101 @@ class _TaxiOrderScreenState extends State<TaxiOrderScreen>
       _isOrderPlaced = false;
       _isOrderAccepted = false;
       _orderDetails = null;
+      _showAutoTaxiButton = true;
+      _showSignalButton = true;
     });
     _showErrorSnackbar("Buyurtma bekor qilindi");
   }
 
   /// Haydovchiga qo'ng'iroq qilish funksiyasi
-  // void _callDriver() {
-  //   _showErrorSnackbar("Haydovchiga qo'ng'iroq qilinmoqda: ${_orderDetails?['driverPhone']}");
-  // }
+  void _callDriver() {
+    _showErrorSnackbar("Haydovchiga qo'ng'iroq qilinmoqda: ${_orderDetails?['driverPhone']}");
+  }
 
   /// Buyurtma tafsilotlarini ko'rsatish funksiyasi
   void _showOrderDetails() {
     showDialog(
       context: context,
       builder: (BuildContext context) {
-        return AlertDialog(
-          title: Text("Buyurtma tafsilotlari"),
-          content: SingleChildScrollView(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                if (_orderDetails != null) ...[
-                  _buildDetailItem("Haydovchi", _orderDetails!['driverName']),
-                  _buildDetailItem("Buyurtma vaqti", _orderDetails!['orderTime']),
-                  _buildDetailItem("Qayerdan", _orderDetails!['from']),
-                  _buildDetailItem("Qayerga", _orderDetails!['to']),
-                  _buildDetailItem("Mashina", "${_orderDetails!['carModel']} ${_orderDetails!['carColor']} ${_orderDetails!['carNumber']}"),
-                  _buildDetailItem("Xizmat turi", _orderDetails!['serviceType']),
-                  _buildDetailItem("To'lov turi", _orderDetails!['paymentType']),
-                  _buildDetailItem("Narx", _orderDetails!['price']),
-                  _buildDetailItem("Litsenziya", _orderDetails!['license']),
-                ]
+        return StatefulBuilder(
+          builder: (context, setState) {
+            return AlertDialog(
+              title: Text("Buyurtma tafsilotlari"),
+              content: SingleChildScrollView(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    if (_orderDetails != null) ...[
+                      _buildDetailItem("Haydovchi", _orderDetails!['driverName']),
+                      _buildDetailItem("Buyurtma vaqti", _orderDetails!['orderTime']),
+                      _buildDetailItem("Qayerdan", _orderDetails!['from']),
+                      _buildDetailItem("Qayerga", _orderDetails!['to']),
+                      _buildDetailItem("Mashina", "${_orderDetails!['carModel']} ${_orderDetails!['carColor']} ${_orderDetails!['carNumber']}"),
+                      _buildDetailItem("Xizmat turi", _orderDetails!['serviceType']),
+                      _buildDetailItem("To'lov turi", _orderDetails!['paymentType']),
+                      _buildDetailItem("Narx", _orderDetails!['price']),
+                      _buildDetailItem("Litsenziya", _orderDetails!['license']),
+                    ],
+                    SizedBox(height: 20),
+                    // To'lov usulini o'zgartirish imkoniyati
+                    Text("To'lov usulini o'zgartirish:", style: TextStyle(fontWeight: FontWeight.bold)),
+                    DropdownButton<String>(
+                      value: _orderDetails != null ? _orderDetails!['paymentType'] : _selectedPaymentType,
+                      onChanged: (value) {
+                        setState(() {
+                          if (_orderDetails != null) {
+                            _orderDetails!['paymentType'] = value!;
+                          } else {
+                            _selectedPaymentType = value!;
+                          }
+                        });
+                      },
+                      items: _paymentMethods.map((String value) {
+                        return DropdownMenuItem<String>(
+                          value: value,
+                          child: Text(value),
+                        );
+                      }).toList(),
+                    ),
+                  ],
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: Text("Yopish"),
+                ),
               ],
-            ),
-          ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  /// Haydovchi buyurtmasini bekor qilish
+  void _cancelDriverOrder() {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Text("Buyurtmani bekor qilish"),
+          content: Text("Rostan ham buyurtmani bekor qilmoqchimisiz?"),
           actions: [
             TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: Text("Yopish"),
+              onPressed: () {
+                Navigator.pop(context); // Dialogni yopish
+              },
+              child: Text("Yo'q", style: TextStyle(color: Colors.blue)),
+            ),
+            TextButton(
+              onPressed: () {
+                Navigator.pop(context); // Dialogni yopish
+                _resetSignalState(); // Buyurtmani bekor qilish
+                _showErrorSnackbar("Buyurtma bekor qilindi");
+              },
+              child: Text("Ha", style: TextStyle(color: Colors.red)),
             ),
           ],
         );
@@ -1712,7 +1768,7 @@ class _TaxiOrderScreenState extends State<TaxiOrderScreen>
               ),
             ),
 
-          // PASTKI PANEL (Bottom Bar) - BU YERDA SIGNAL HOLATI WIDGETI KO'CHIRILDI
+          // PASTKI PANEL (Bottom Bar)
           Align(
             alignment: Alignment.bottomCenter,
             child: Container(
@@ -1737,7 +1793,6 @@ class _TaxiOrderScreenState extends State<TaxiOrderScreen>
                     ],
                   ),
                   SizedBox(height: 20),
-
                   // Haydovchi qabul qilgandan keyingi interfeys
                   if (_isDriverAccepted && !_isServiceStarted)
                   Container(
@@ -1769,7 +1824,7 @@ class _TaxiOrderScreenState extends State<TaxiOrderScreen>
                             ),
                             IconButton(
                               icon: Icon(Icons.phone, color: Colors.green, size: 30),
-                              onPressed: () => _showErrorSnackbar("Qo'ng'iroq qilinmoqda: +998901234567"),
+                              onPressed: () => _callDriver(),
                             ),
                           ],
                         ),
@@ -1790,7 +1845,7 @@ class _TaxiOrderScreenState extends State<TaxiOrderScreen>
                               child: Text("Batafsil ma'lumot"),
                             ),
                             TextButton(
-                              onPressed: _cancelOrder,
+                              onPressed: _cancelDriverOrder,
                               child: Text("Bekor qilish", style: TextStyle(color: Colors.red)),
                             ),
                           ],
@@ -1997,44 +2052,7 @@ class _TaxiOrderScreenState extends State<TaxiOrderScreen>
                       ),
                     ),
 
-                  // Avtomatik taksi uchun buyurtma berish tugmasi
-                  if (_isAutoTaxiButtonActive && _showAutoTaxiButton && !_isDriverAccepted && !_isServiceStarted)
-                    Container(
-                      width: double.infinity,
-                      margin: EdgeInsets.only(bottom: 10),
-                      child: ElevatedButton(
-                        onPressed: _placeOrder,
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Color(0xFF13B58C),
-                          padding: EdgeInsets.symmetric(vertical: 16),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
-                        ),
-                        child: Text(
-                          "Sizga mos haydovchini buyurtma qiling",
-                          style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold),
-                        ),
-                      ),
-                    ),
-
-                  // Buyurtma yuborilayotganida kutish animatsiyasi
-                  if (_isOrderPlaced && !_isOrderAccepted && !_isDriverAccepted && !_isServiceStarted)
-                    Container(
-                      width: double.infinity,
-                      margin: EdgeInsets.only(bottom: 10),
-                      padding: EdgeInsets.symmetric(vertical: 16),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(15),
-                      ),
-                      child: Column(
-                        children: [
-                          CircularProgressIndicator(valueColor: AlwaysStoppedAnimation<Color>(Colors.blue)),
-                          SizedBox(height: 10),
-                          Text("Buyurtma yuborilmoqda...", style: TextStyle(color: Colors.blue, fontSize: 16)),
-                        ],
-                      ),
-                    ),
- // SIGNAL HOLATINI KO'RSATISH (PASTKI PANEL ICHIDA)
+ // Signal holatini ko'rsatish
                   if (_isFindingNearestDriver || _isSendingSignal || _isWaitingForDriver)
                     Container(
                       width: double.infinity,
@@ -2084,6 +2102,50 @@ class _TaxiOrderScreenState extends State<TaxiOrderScreen>
                       ),
                     ),
 
+
+
+                  // Avtomatik taksi uchun buyurtma berish tugmasi
+                  if (_isAutoTaxiButtonActive && _showAutoTaxiButton && !_isDriverAccepted && !_isServiceStarted)
+                    Container(
+                      width: double.infinity,
+                      margin: EdgeInsets.only(bottom: 10),
+                      child: ElevatedButton(
+                        onPressed: _placeOrder,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Color(0xFF13B58C),
+                          padding: EdgeInsets.symmetric(vertical: 16),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+                        ),
+                        child: Text(
+                          "Sizga mos haydovchini buyurtma qiling",
+                          style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold),
+                        ),
+                      ),
+                    ),
+
+                  // Buyurtma yuborilayotganida kutish animatsiyasi
+                  if (_isOrderPlaced && !_isOrderAccepted && !_isDriverAccepted && !_isServiceStarted)
+                    Container(
+                      width: double.infinity,
+                      margin: EdgeInsets.only(bottom: 10),
+                      padding: EdgeInsets.symmetric(vertical: 16),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(15),
+                      ),
+                      child: Column(
+                        children: [
+                          CircularProgressIndicator(valueColor: AlwaysStoppedAnimation<Color>(Colors.blue)),
+                          SizedBox(height: 10),
+                          Text("Buyurtma yuborilmoqda...", style: TextStyle(color: Colors.blue, fontSize: 16)),
+                          SizedBox(height: 10),
+                          TextButton(
+                            onPressed: _cancelOrder,
+                            child: Text("Bekor qilish", style: TextStyle(color: Colors.red)),
+                          ),
+                        ],
+                      ),
+                    ),
                 ],
               ),
             ),
