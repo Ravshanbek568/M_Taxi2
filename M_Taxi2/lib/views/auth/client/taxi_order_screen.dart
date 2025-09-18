@@ -279,7 +279,9 @@ class _TaxiOrderScreenState extends State<TaxiOrderScreen>
 
   // Avtomatik taksi parametrlari
   String _selectedServiceType = "Ekonom";
-  String _selectedPaymentType = "Naqt";
+String _selectedPaymentType = "Naqt";
+bool _needLuggageHelp = false;
+final List<String> _selectedSpecialRequests = [];
 
   // Buyurtma holati
   bool _isOrderPlaced = false;
@@ -416,6 +418,16 @@ class _TaxiOrderScreenState extends State<TaxiOrderScreen>
     setState(() {
       _signalPrice = (basePrice * carTypeMultiplier * (1 + passengerMultiplier) * luggageMultiplier).roundToDouble();
     });
+  }
+
+  // Avtomatik taksi narxini hisoblash
+  double _calculateAutoTaxiPrice() {
+    double basePrice = 12000.0;
+    double serviceMultiplier = _selectedServiceType == "Ekonom" ? 1.0 : 
+                             _selectedServiceType == "Standart" ? 1.2 : 
+                             _selectedServiceType == "Komfort" ? 1.5 : 2.0;
+    
+    return basePrice * serviceMultiplier;
   }
 
   // Haydovchi ikonkasi yuklash
@@ -1062,13 +1074,14 @@ class _TaxiOrderScreenState extends State<TaxiOrderScreen>
         return StatefulBuilder(
           builder: (context, setState) {
             return AlertDialog(
-              title: Text("Avtomatik taksi parametrlari"),
+              title: Text("Avtomatik taksi parametrlari", style: TextStyle(fontSize: 20)),
               content: SingleChildScrollView(
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
+                    // Xizmat turi
                     ListTile(
-                      title: Text("Xizmat turi"),
+                      title: Text("Xizmat turi", style: TextStyle(fontWeight: FontWeight.bold)),
                       trailing: DropdownButton<String>(
                         value: _selectedServiceType,
                         onChanged: (value) {
@@ -1076,7 +1089,7 @@ class _TaxiOrderScreenState extends State<TaxiOrderScreen>
                             _selectedServiceType = value!;
                           });
                         },
-                        items: ["Ekonom", "Standart", "Komfort"].map((String value) {
+                        items: ["Ekonom", "Standart", "Komfort", "Biznes"].map((String value) {
                           return DropdownMenuItem<String>(
                             value: value,
                             child: Text(value),
@@ -1084,9 +1097,10 @@ class _TaxiOrderScreenState extends State<TaxiOrderScreen>
                         }).toList(),
                       ),
                     ),
-
+                    
+                    // To'lov turi
                     ListTile(
-                      title: Text("To'lov turi"),
+                      title: Text("To'lov turi", style: TextStyle(fontWeight: FontWeight.bold)),
                       trailing: DropdownButton<String>(
                         value: _selectedPaymentType,
                         onChanged: (value) {
@@ -1094,7 +1108,7 @@ class _TaxiOrderScreenState extends State<TaxiOrderScreen>
                             _selectedPaymentType = value!;
                           });
                         },
-                        items: ["Naqt", "Karta orqali", "Ilova orqali"].map((String value) {
+                        items: _paymentMethods.map((String value) {
                           return DropdownMenuItem<String>(
                             value: value,
                             child: Text(value),
@@ -1102,31 +1116,89 @@ class _TaxiOrderScreenState extends State<TaxiOrderScreen>
                         }).toList(),
                       ),
                     ),
-
-                    Padding(
-                      padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                      child: TextField(
-                        decoration: InputDecoration(
-                          labelText: "Haydovchi uchun izoh (ixtiyoriy)",
-                          border: OutlineInputBorder(),
-                        ),
-                        maxLines: 3,
+                    
+                    // Bagaj yordami
+                    SwitchListTile(
+                      title: Text("Bagaj yordami kerak", style: TextStyle(fontWeight: FontWeight.bold)),
+                      value: _needLuggageHelp,
+                      onChanged: (value) {
+                        setState(() {
+                          _needLuggageHelp = value;
+                        });
+                      },
+                    ),
+                    
+                    // Maxsus so'rovlar
+                    ExpansionTile(
+                      title: Text("Maxsus so'rovlar", style: TextStyle(fontWeight: FontWeight.bold)),
+                      children: _specialRequests.map((request) {
+                        return CheckboxListTile(
+                          title: Text(request),
+                          value: _selectedSpecialRequests.contains(request),
+                          onChanged: (value) {
+                            setState(() {
+                              if (value!) {
+                                _selectedSpecialRequests.add(request);
+                              } else {
+                                _selectedSpecialRequests.remove(request);
+                              }
+                            });
+                          },
+                        );
+                      }).toList(),
+                    ),
+                    
+                    // Taxminiy narx
+                    Container(
+                      padding: EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: Colors.blue.shade50,
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text("Taxminiy narx:", style: TextStyle(fontWeight: FontWeight.bold)),
+                          Text("${_calculateAutoTaxiPrice().toStringAsFixed(0)} so'm", 
+                              style: TextStyle(fontWeight: FontWeight.bold, color: Colors.blue)),
+                        ],
                       ),
                     ),
+                    
+            // Haydovchi uchun izoh
+Padding(
+  padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+  child: TextField(
+    onChanged: (value) {
+      // _driverComment o'rniga mahalliy o'zgaruvchi ishlatish
+      // Bu yerda siz commentni kerakli joyga saqlashingiz mumkin
+      // Masalan, _selectedDriverComment deb yangi o'zgaruvchi yaratishingiz mumkin
+    },
+    decoration: InputDecoration(
+      labelText: "Haydovchi uchun izoh (ixtiyoriy)",
+      border: OutlineInputBorder(),
+    ),
+    maxLines: 3,
+  ),
+),
                   ],
                 ),
               ),
               actions: [
                 TextButton(
                   onPressed: () => Navigator.pop(context),
-                  child: Text("Bekor qilish"),
+                  child: Text("Bekor qilish", style: TextStyle(color: Colors.red)),
                 ),
                 ElevatedButton(
                   onPressed: () {
                     Navigator.pop(context);
                     _startAutoTaxiSearch();
                   },
-                  child: Text("Qidiruvni boshlash"),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.blue,
+                    padding: EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                  ),
+                  child: Text("Qidiruvni boshlash", style: TextStyle(color: Colors.white)),
                 ),
               ],
             );
@@ -1244,11 +1316,126 @@ class _TaxiOrderScreenState extends State<TaxiOrderScreen>
         _animateCameraZoom(_searchZoomLevel);
       } else {
         timer.cancel();
-        setState(() {
-          _isSearching = false;
-          _showAutoTaxiButton = true;
-        });
+        _showDriverFoundDialog();
       }
+    });
+  }
+
+  /// Topilgan haydovchi dialogini ko'rsatish
+  void _showDriverFoundDialog() {
+    // Taxminiy haydovchi ma'lumotlari
+    Map<String, dynamic> foundDriver = {
+      'name': 'Alijon Valiyev',
+      'car': 'Cobalt',
+      'color': 'Oq',
+      'number': '01 A 250 AA',
+      'rating': 4.8,
+      'eta': '5 daqiqa',
+      'price': '15,000 so\'m'
+    };
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Text("Topildi! Sizga mos haydovchi", style: TextStyle(fontSize: 18)),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                CircleAvatar(
+                  radius: 30,
+                  backgroundColor: Colors.blue,
+                  child: Text(
+                    foundDriver['name'].substring(0, 1),
+                    style: TextStyle(fontSize: 24, color: Colors.white),
+                  ),
+                ),
+                SizedBox(height: 10),
+                Text(foundDriver['name'], style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                Text("${foundDriver['car']} • ${foundDriver['color']} • ${foundDriver['number']}"),
+                SizedBox(height: 10),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(Icons.star, color: Colors.amber, size: 16),
+                    Text(" ${foundDriver['rating']}"),
+                    SizedBox(width: 10),
+                    Icon(Icons.access_time, size: 16),
+                    Text(" ${foundDriver['eta']}"),
+                  ],
+                ),
+                SizedBox(height: 10),
+                Container(
+                  padding: EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: Colors.green.shade50,
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Text(
+                    "Narx: ${foundDriver['price']}",
+                    style: TextStyle(color: Colors.green, fontWeight: FontWeight.bold),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.pop(context);
+                _startAutoTaxiSearch(); // Yangi qidiruv
+              },
+              child: Text("Boshqa haydovchi", style: TextStyle(color: Colors.grey)),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                Navigator.pop(context);
+                _placeAutoTaxiOrder(foundDriver);
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.green,
+              ),
+              child: Text("Tasdiqlash", style: TextStyle(color: Colors.white)),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  /// Avtomatik taksi buyurtmasini berish
+  void _placeAutoTaxiOrder(Map<String, dynamic> driver) {
+    setState(() {
+      _isOrderPlaced = true;
+      _isOrderAccepted = false;
+      _showAutoTaxiButton = false;
+    });
+
+    // Buyurtma qabul qilinishini simulyatsiya qilish
+    _orderAcceptanceTimer = Timer(Duration(seconds: 3), () {
+      setState(() {
+        _isOrderAccepted = true;
+        _orderDetails = {
+          'driverName': driver['name'],
+          'driverPhone': '+998901234567',
+          'carModel': driver['car'],
+          'carColor': driver['color'],
+          'carNumber': driver['number'],
+          'arrivalTime': driver['eta'],
+          'orderTime': DateTime.now().toString(),
+          'from': _savedPickupAddress,
+          'to': _selectedDestinationAddress,
+          'serviceType': _selectedServiceType,
+          'paymentType': _selectedPaymentType,
+          'price': driver['price'],
+          'license': 'Andijon shahar tumani'
+        };
+      });
+      
+      // Haydovchi markerini qo'shish
+      _addDriverMarker();
     });
   }
 
@@ -1293,6 +1480,7 @@ class _TaxiOrderScreenState extends State<TaxiOrderScreen>
   /// Haydovchi markerini qo'shish
   void _addDriverMarker() {
     if (_savedPickupLocation != null && _driverIcon != null) {
+      // Haydovchi manzilini simulyatsiya qilish (aslida serverdan keladi)
       final driverLocation = LatLng(
         _savedPickupLocation!.latitude + 0.005,
         _savedPickupLocation!.longitude + 0.005,
@@ -1305,10 +1493,11 @@ class _TaxiOrderScreenState extends State<TaxiOrderScreen>
           icon: _driverIcon!,
           infoWindow: InfoWindow(
             title: 'Haydovchingiz',
-            snippet: 'Yetib borish: $_estimatedArrivalTime daqiqa',
+            snippet: 'Yetib borish: ${_orderDetails!['arrivalTime']}',
           ),
         );
       });
+      
       _centerMapOnDriverAndClient();
     }
   }
@@ -1426,18 +1615,6 @@ class _TaxiOrderScreenState extends State<TaxiOrderScreen>
     });
   }
 
-  /// Buyurtmani bekor qilish funksiyasi
-  void _cancelOrder() {
-    _orderAcceptanceTimer?.cancel();
-    setState(() {
-      _isOrderPlaced = false;
-      _isOrderAccepted = false;
-      _orderDetails = null;
-      _showAutoTaxiButton = true;
-      _showSignalButton = true;
-    });
-    _showErrorSnackbar("Buyurtma bekor qilindi");
-  }
 
   /// Haydovchiga qo'ng'iroq qilish funksiyasi
   void _callDriver() {
@@ -2139,10 +2316,7 @@ class _TaxiOrderScreenState extends State<TaxiOrderScreen>
                           SizedBox(height: 10),
                           Text("Buyurtma yuborilmoqda...", style: TextStyle(color: Colors.blue, fontSize: 16)),
                           SizedBox(height: 10),
-                          TextButton(
-                            onPressed: _cancelOrder,
-                            child: Text("Bekor qilish", style: TextStyle(color: Colors.red)),
-                          ),
+                         
                         ],
                       ),
                     ),
