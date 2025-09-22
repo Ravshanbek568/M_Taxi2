@@ -117,13 +117,13 @@ class _RatingDialogState extends State<RatingDialog> {
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
-      title: Text("Haydovchini baholang"),
+      title: const Text("Haydovchini baholang"),
       content: SingleChildScrollView(
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Text("Haydovchi haqida izoh qoldiring", style: TextStyle(fontSize: 16)),
-            SizedBox(height: 10),
+            const Text("Haydovchi haqida izoh qoldiring", style: TextStyle(fontSize: 16)),
+            const SizedBox(height: 10),
             
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
@@ -142,11 +142,11 @@ class _RatingDialogState extends State<RatingDialog> {
                 );
               }),
             ),
-            SizedBox(height: 20),
+            const SizedBox(height: 20),
             
             TextField(
               controller: _commentController,
-              decoration: InputDecoration(
+              decoration: const InputDecoration(
                 labelText: "Izoh (ixtiyoriy)",
                 border: OutlineInputBorder(),
               ),
@@ -161,7 +161,7 @@ class _RatingDialogState extends State<RatingDialog> {
             widget.onCancel();
             Navigator.pop(context);
           },
-          child: Text("Bekor qilish"),
+          child: const Text("Bekor qilish"),
         ),
         ElevatedButton(
           onPressed: _isSubmitting ? null : () async {
@@ -178,8 +178,8 @@ class _RatingDialogState extends State<RatingDialog> {
             }
           },
           child: _isSubmitting 
-              ? SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))
-              : Text("Jo'natish"),
+              ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))
+              : const Text("Jo'natish"),
         ),
       ],
     );
@@ -279,14 +279,13 @@ class _TaxiOrderScreenState extends State<TaxiOrderScreen>
 
   // Avtomatik taksi parametrlari
   String _selectedServiceType = "Ekonom";
-String _selectedPaymentType = "Naqt";
-bool _needLuggageHelp = false;
-final List<String> _selectedSpecialRequests = [];
+  String _selectedPaymentType = "Naqt";
+  bool _needLuggageHelp = false;
+  final List<String> _selectedSpecialRequests = [];
 
-  // Buyurtma holati
-  bool _isOrderPlaced = false;
-  bool _isOrderAccepted = false;
-  Map<String, dynamic>? _orderDetails;
+  // Buyurtma holati - ISHLATILMAYDI, O'CHIRILDI
+  final bool _isOrderPlaced = false;
+  final bool _isOrderAccepted = false;
   Timer? _orderAcceptanceTimer;
 
   // Signal jo'natish holatlari
@@ -317,6 +316,13 @@ final List<String> _selectedSpecialRequests = [];
   bool _isFindingNearestDriver = false;
   List<DriverInfo> _availableDrivers = [];
   double _signalPrice = 0.0;
+
+  // AVTOMATIK TAXI UCHUN YANGI HOLATLAR - SIGNALGA O'XSHASH HOLATLAR
+  bool _isAutoTaxiSearching = false;
+  bool _isAutoTaxiStarted = false;
+  Map<String, dynamic>? _autoTaxiDriver;
+  Timer? _autoTaxiTimer;
+  int _autoTaxiArrivalTime = 5;
 
   // Maxsus so'rovlar ro'yxati
   final List<String> _specialRequests = [
@@ -433,7 +439,7 @@ final List<String> _selectedSpecialRequests = [];
   // Haydovchi ikonkasi yuklash
   void _loadDriverIcon() async {
     final icon = await BitmapDescriptor.asset(
-      ImageConfiguration(size: Size(48, 48)),
+      const ImageConfiguration(size: Size(48, 48)),
       'assets/images/car_icon.png',
     );
     setState(() {
@@ -449,6 +455,7 @@ final List<String> _selectedSpecialRequests = [];
     _signalTimer?.cancel();
     _driverResponseTimer?.cancel();
     _serviceTimer?.cancel();
+    _autoTaxiTimer?.cancel();
     super.dispose();
   }
 
@@ -535,7 +542,7 @@ final List<String> _selectedSpecialRequests = [];
 
   /// Marshrut chizish funksiyasi
   Future<void> _drawRoute() async {
-    if (_savedPickupLocation == null || _selectedDestination != null) return;
+    if (_savedPickupLocation == null || _selectedDestination == null) return;
 
     try {
       final String url =
@@ -556,7 +563,7 @@ final List<String> _selectedSpecialRequests = [];
           _polylines.clear();
           _polylines.add(
             maps.Polyline(
-              polylineId: maps.PolylineId('route'),
+              polylineId: const maps.PolylineId('route'),
               points: points,
               color: _routeColor,
               width: _routeWidth,
@@ -628,6 +635,7 @@ final List<String> _selectedSpecialRequests = [];
       _isDriversButtonActive = false;
       _cancelSearch();
       _resetSignalState();
+      _resetAutoTaxiState();
     });
   }
   
@@ -647,6 +655,19 @@ final List<String> _selectedSpecialRequests = [];
       _tripProgress = 0.0;
       _isFindingNearestDriver = false;
       _selectedDriver = null;
+    });
+  }
+
+  /// Avtomatik taksi holatlarini tozalash
+  void _resetAutoTaxiState() {
+    _autoTaxiTimer?.cancel();
+    
+    setState(() {
+      _isAutoTaxiSearching = false;
+      _isAutoTaxiStarted = false;
+      _autoTaxiDriver = null;
+      _autoTaxiArrivalTime = 5;
+      _driverMarker = null;
     });
   }
 
@@ -779,13 +800,13 @@ final List<String> _selectedSpecialRequests = [];
         return StatefulBuilder(
           builder: (context, setState) {
             return AlertDialog(
-              title: Text("Signal parametrlari", style: TextStyle(fontSize: 20)),
+              title: const Text("Signal parametrlari", style: TextStyle(fontSize: 20)),
               content: SingleChildScrollView(
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     ListTile(
-                      title: Text("Yo'lovchilar soni", style: TextStyle(fontWeight: FontWeight.bold)),
+                      title: const Text("Yo'lovchilar soni", style: TextStyle(fontWeight: FontWeight.bold)),
                       trailing: DropdownButton<int>(
                         value: _signalParameters.passengerCount,
                         onChanged: (value) {
@@ -810,7 +831,7 @@ final List<String> _selectedSpecialRequests = [];
                     ),
 
                     ListTile(
-                      title: Text("Mashina turi", style: TextStyle(fontWeight: FontWeight.bold)),
+                      title: const Text("Mashina turi", style: TextStyle(fontWeight: FontWeight.bold)),
                       trailing: DropdownButton<String>(
                         value: _signalParameters.carType,
                         onChanged: (value) {
@@ -835,7 +856,7 @@ final List<String> _selectedSpecialRequests = [];
                     ),
 
                     ListTile(
-                      title: Text("To'lov usuli", style: TextStyle(fontWeight: FontWeight.bold)),
+                      title: const Text("To'lov usuli", style: TextStyle(fontWeight: FontWeight.bold)),
                       trailing: DropdownButton<String>(
                         value: _signalParameters.paymentPreference,
                         onChanged: (value) {
@@ -859,7 +880,7 @@ final List<String> _selectedSpecialRequests = [];
                     ),
 
                     SwitchListTile(
-                      title: Text("Bagaj yordami kerak", style: TextStyle(fontWeight: FontWeight.bold)),
+                      title: const Text("Bagaj yordami kerak", style: TextStyle(fontWeight: FontWeight.bold)),
                       value: _signalParameters.needHelpWithLuggage,
                       onChanged: (value) {
                         setState(() {
@@ -876,7 +897,7 @@ final List<String> _selectedSpecialRequests = [];
                     ),
 
                     ExpansionTile(
-                      title: Text("Maxsus so'rovlar", style: TextStyle(fontWeight: FontWeight.bold)),
+                      title: const Text("Maxsus so'rovlar", style: TextStyle(fontWeight: FontWeight.bold)),
                       children: _specialRequests.map((request) {
                         return RadioListTile<String>(
                           title: Text(request),
@@ -898,7 +919,7 @@ final List<String> _selectedSpecialRequests = [];
                     ),
 
                     Container(
-                      padding: EdgeInsets.all(12),
+                      padding: const EdgeInsets.all(12),
                       decoration: BoxDecoration(
                         color: Colors.blue.shade50,
                         borderRadius: BorderRadius.circular(10),
@@ -906,9 +927,9 @@ final List<String> _selectedSpecialRequests = [];
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          Text("Taxminiy narx:", style: TextStyle(fontWeight: FontWeight.bold)),
+                          const Text("Taxminiy narx:", style: TextStyle(fontWeight: FontWeight.bold)),
                           Text("${_signalPrice.toStringAsFixed(0)} so'm", 
-                              style: TextStyle(fontWeight: FontWeight.bold, color: Colors.blue)),
+                              style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.blue)),
                         ],
                       ),
                     ),
@@ -918,7 +939,7 @@ final List<String> _selectedSpecialRequests = [];
               actions: [
                 TextButton(
                   onPressed: () => Navigator.pop(context),
-                  child: Text("Bekor qilish", style: TextStyle(color: Colors.red)),
+                  child: const Text("Bekor qilish", style: TextStyle(color: Colors.red)),
                 ),
                 ElevatedButton(
                   onPressed: () {
@@ -927,9 +948,9 @@ final List<String> _selectedSpecialRequests = [];
                   },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.blue,
-                    padding: EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                    padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
                   ),
-                  child: Text("Haydovchi qidirish", style: TextStyle(color: Colors.white)),
+                  child: const Text("Haydovchi qidirish", style: TextStyle(color: Colors.white)),
                 ),
               ],
             );
@@ -945,7 +966,7 @@ final List<String> _selectedSpecialRequests = [];
       _isFindingNearestDriver = true;
     });
 
-    Timer(Duration(seconds: 2), () {
+    Timer(const Duration(seconds: 2), () {
       if (_availableDrivers.isNotEmpty) {
         _availableDrivers.sort((a, b) => a.eta.compareTo(b.eta));
         _selectedDriver = _availableDrivers.first;
@@ -966,7 +987,7 @@ final List<String> _selectedSpecialRequests = [];
       barrierDismissible: false,
       builder: (BuildContext context) {
         return AlertDialog(
-          title: Text("Topildi! Eng yaqin haydovchi", style: TextStyle(fontSize: 18)),
+          title: const Text("Topildi! Eng yaqin haydovchi", style: TextStyle(fontSize: 18)),
           content: SingleChildScrollView(
             child: Column(
               mainAxisSize: MainAxisSize.min,
@@ -977,38 +998,38 @@ final List<String> _selectedSpecialRequests = [];
                     backgroundColor: Colors.blue,
                     child: Text(
                       _selectedDriver!.name.substring(0, 1),
-                      style: TextStyle(fontSize: 24, color: Colors.white),
+                      style: const TextStyle(fontSize: 24, color: Colors.white),
                     ),
                   ),
-                  SizedBox(height: 10),
-                  Text(_selectedDriver!.name, style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                  const SizedBox(height: 10),
+                  Text(_selectedDriver!.name, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
                   Text("${_selectedDriver!.carModel} • ${_selectedDriver!.carColor} • ${_selectedDriver!.carNumber}"),
-                  SizedBox(height: 10),
+                  const SizedBox(height: 10),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Icon(Icons.star, color: Colors.amber, size: 16),
+                      const Icon(Icons.star, color: Colors.amber, size: 16),
                       Text(" ${_selectedDriver!.rating}"),
-                      SizedBox(width: 10),
-                      Icon(Icons.directions_car, size: 16),
+                      const SizedBox(width: 10),
+                      const Icon(Icons.directions_car, size: 16),
                       Text(" ${_selectedDriver!.completedRides} ta safar"),
                     ],
                   ),
-                  SizedBox(height: 10),
+                  const SizedBox(height: 10),
                   Container(
-                    padding: EdgeInsets.all(8),
+                    padding: const EdgeInsets.all(8),
                     decoration: BoxDecoration(
                       color: Colors.green.shade50,
                       borderRadius: BorderRadius.circular(8),
                     ),
                     child: Text(
                       "Yetib borish: ${_selectedDriver!.eta} daqiqa",
-                      style: TextStyle(color: Colors.green, fontWeight: FontWeight.bold),
+                      style: const TextStyle(color: Colors.green, fontWeight: FontWeight.bold),
                     ),
                   ),
-                  SizedBox(height: 10),
+                  const SizedBox(height: 10),
                   Text("Narx: ${_signalPrice.toStringAsFixed(0)} so'm", 
-                      style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                      style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
                 ],
               ],
             ),
@@ -1019,7 +1040,7 @@ final List<String> _selectedSpecialRequests = [];
                 Navigator.pop(context);
                 _findNearestDriver();
               },
-              child: Text("Boshqa haydovchi", style: TextStyle(color: Colors.grey)),
+              child: const Text("Boshqa haydovchi", style: TextStyle(color: Colors.grey)),
             ),
             ElevatedButton(
               onPressed: () {
@@ -1029,7 +1050,7 @@ final List<String> _selectedSpecialRequests = [];
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.green,
               ),
-              child: Text("Tasdiqlash", style: TextStyle(color: Colors.white)),
+              child: const Text("Tasdiqlash", style: TextStyle(color: Colors.white)),
             ),
           ],
         );
@@ -1048,13 +1069,13 @@ final List<String> _selectedSpecialRequests = [];
       _showSignalButton = false;
     });
 
-    _signalTimer = Timer(Duration(seconds: 3), () {
+    _signalTimer = Timer(const Duration(seconds: 3), () {
       setState(() {
         _isSendingSignal = false;
         _isWaitingForDriver = true;
       });
 
-      _driverResponseTimer = Timer(Duration(seconds: 5), () {
+      _driverResponseTimer = Timer(const Duration(seconds: 5), () {
         setState(() {
           _isWaitingForDriver = false;
           _isDriverAccepted = true;
@@ -1074,14 +1095,14 @@ final List<String> _selectedSpecialRequests = [];
         return StatefulBuilder(
           builder: (context, setState) {
             return AlertDialog(
-              title: Text("Avtomatik taksi parametrlari", style: TextStyle(fontSize: 20)),
+              title: const Text("Avtomatik taksi parametrlari", style: TextStyle(fontSize: 20)),
               content: SingleChildScrollView(
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     // Xizmat turi
                     ListTile(
-                      title: Text("Xizmat turi", style: TextStyle(fontWeight: FontWeight.bold)),
+                      title: const Text("Xizmat turi", style: TextStyle(fontWeight: FontWeight.bold)),
                       trailing: DropdownButton<String>(
                         value: _selectedServiceType,
                         onChanged: (value) {
@@ -1100,7 +1121,7 @@ final List<String> _selectedSpecialRequests = [];
                     
                     // To'lov turi
                     ListTile(
-                      title: Text("To'lov turi", style: TextStyle(fontWeight: FontWeight.bold)),
+                      title: const Text("To'lov turi", style: TextStyle(fontWeight: FontWeight.bold)),
                       trailing: DropdownButton<String>(
                         value: _selectedPaymentType,
                         onChanged: (value) {
@@ -1119,7 +1140,7 @@ final List<String> _selectedSpecialRequests = [];
                     
                     // Bagaj yordami
                     SwitchListTile(
-                      title: Text("Bagaj yordami kerak", style: TextStyle(fontWeight: FontWeight.bold)),
+                      title: const Text("Bagaj yordami kerak", style: TextStyle(fontWeight: FontWeight.bold)),
                       value: _needLuggageHelp,
                       onChanged: (value) {
                         setState(() {
@@ -1130,7 +1151,7 @@ final List<String> _selectedSpecialRequests = [];
                     
                     // Maxsus so'rovlar
                     ExpansionTile(
-                      title: Text("Maxsus so'rovlar", style: TextStyle(fontWeight: FontWeight.bold)),
+                      title: const Text("Maxsus so'rovlar", style: TextStyle(fontWeight: FontWeight.bold)),
                       children: _specialRequests.map((request) {
                         return CheckboxListTile(
                           title: Text(request),
@@ -1150,7 +1171,7 @@ final List<String> _selectedSpecialRequests = [];
                     
                     // Taxminiy narx
                     Container(
-                      padding: EdgeInsets.all(12),
+                      padding: const EdgeInsets.all(12),
                       decoration: BoxDecoration(
                         color: Colors.blue.shade50,
                         borderRadius: BorderRadius.circular(10),
@@ -1158,36 +1179,31 @@ final List<String> _selectedSpecialRequests = [];
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          Text("Taxminiy narx:", style: TextStyle(fontWeight: FontWeight.bold)),
+                          const Text("Taxminiy narx:", style: TextStyle(fontWeight: FontWeight.bold)),
                           Text("${_calculateAutoTaxiPrice().toStringAsFixed(0)} so'm", 
-                              style: TextStyle(fontWeight: FontWeight.bold, color: Colors.blue)),
+                              style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.blue)),
                         ],
                       ),
                     ),
                     
-            // Haydovchi uchun izoh
-Padding(
-  padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-  child: TextField(
-    onChanged: (value) {
-      // _driverComment o'rniga mahalliy o'zgaruvchi ishlatish
-      // Bu yerda siz commentni kerakli joyga saqlashingiz mumkin
-      // Masalan, _selectedDriverComment deb yangi o'zgaruvchi yaratishingiz mumkin
-    },
-    decoration: InputDecoration(
-      labelText: "Haydovchi uchun izoh (ixtiyoriy)",
-      border: OutlineInputBorder(),
-    ),
-    maxLines: 3,
-  ),
-),
+                    // Haydovchi uchun izoh
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                      child: TextField(
+                        decoration: const InputDecoration(
+                          labelText: "Haydovchi uchun izoh (ixtiyoriy)",
+                          border: OutlineInputBorder(),
+                        ),
+                        maxLines: 3,
+                      ),
+                    ),
                   ],
                 ),
               ),
               actions: [
                 TextButton(
                   onPressed: () => Navigator.pop(context),
-                  child: Text("Bekor qilish", style: TextStyle(color: Colors.red)),
+                  child: const Text("Bekor qilish", style: TextStyle(color: Colors.red)),
                 ),
                 ElevatedButton(
                   onPressed: () {
@@ -1196,9 +1212,9 @@ Padding(
                   },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.blue,
-                    padding: EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                    padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
                   ),
-                  child: Text("Qidiruvni boshlash", style: TextStyle(color: Colors.white)),
+                  child: const Text("Qidiruvni boshlash", style: TextStyle(color: Colors.white)),
                 ),
               ],
             );
@@ -1206,6 +1222,128 @@ Padding(
         );
       },
     );
+  }
+
+  /// AVTOMATIK TAKSI QIDIRUVINI BOSHLASH - YANGI VERSIYA
+  void _startAutoTaxiSearch() {
+    setState(() {
+      _isAutoTaxiSearching = true;
+      _foundTaxisCount = 0;
+      _searchZoomLevel = 17.0;
+      _showAutoTaxiButton = false;
+    });
+
+    // Zoom animatsiyasi
+    _searchAnimationTimer = Timer.periodic(const Duration(milliseconds: 800), (timer) {
+      if (_searchZoomLevel > 12.0) {
+        setState(() {
+          _searchZoomLevel -= 0.3;
+          _foundTaxisCount += 1;
+        });
+        _animateCameraZoom(_searchZoomLevel);
+      } else {
+        timer.cancel();
+        _findAutoTaxiDriver();
+      }
+    });
+  }
+
+  /// AVTOMATIK TAKSI HAYDOVCHISINI QIDIRISH - YANGI VERSIYA
+  void _findAutoTaxiDriver() {
+    setState(() {
+      _isAutoTaxiSearching = false;
+    });
+    
+    // Avtomatik taksi qidirilmoqda animatsiyasi
+    _startAutoTaxiDriverSearchAnimation();
+  }
+
+  /// AVTOMATIK TAKSI HAYDOVCHI QIDIRISH ANIMATSIYASI
+  void _startAutoTaxiDriverSearchAnimation() {
+    setState(() {
+      _isAutoTaxiSearching = true;
+    });
+
+    // 3 soniya davomida haydovchi qidirilmoqda animatsiyasi
+    Timer(const Duration(seconds: 3), () {
+      _sendAutoTaxiRequestToDriver();
+    });
+  }
+
+  /// AVTOMATIK TAKSI SO'ROVINI HAYDOVCHIGA JO'NATISH
+  void _sendAutoTaxiRequestToDriver() {
+    setState(() {
+      _isAutoTaxiSearching = false;
+      _isWaitingForDriver = true; // Signal jo'natishdagi kabi
+    });
+
+    // 5 soniya davomida haydovchidan javob kutilmoqda
+    _driverResponseTimer = Timer(const Duration(seconds: 5), () {
+      // Simulyatsiya: haydovchi tasdiqladi
+      _handleAutoTaxiDriverResponse(true);
+    });
+  }
+
+  /// AVTOMATIK TAKSI HAYDOVCHI JAVOBINI QAYTA ISHLASH
+  void _handleAutoTaxiDriverResponse(bool isAccepted) {
+    if (isAccepted) {
+      setState(() {
+        _isWaitingForDriver = false;
+        _isDriverAccepted = true;
+        _isAutoTaxiStarted = true;
+      });
+
+      // Haydovchi ma'lumotlarini o'rnatish
+      _autoTaxiDriver = {
+        'name': 'Alijon Valiyev',
+        'car': 'Cobalt',
+        'color': 'Oq',
+        'number': '01 A 250 AA',
+        'rating': 4.8,
+        'eta': 5,
+        'phone': '+998901234567',
+        'price': _calculateAutoTaxiPrice().toStringAsFixed(0),
+      };
+
+      _addDriverMarker();
+      _startService();
+    } else {
+      // Agar haydovchi rad etsa, yangi haydovchi qidirish
+      setState(() {
+        _isWaitingForDriver = false;
+      });
+      _startAutoTaxiDriverSearchAnimation(); // Qayta qidirish
+    }
+  }
+
+  /// Xizmatni boshlash - IKKALA FUNKSIYA UCHUN ISHLATILADI
+  void _startService() {
+    _serviceTimer = Timer(const Duration(seconds: 2), () {
+      setState(() {
+        _isServiceStarted = true;
+        _estimatedArrivalTime = _isAutoTaxiStarted ? _autoTaxiArrivalTime : 5;
+      });
+      _updateTripProgress();
+    });
+  }
+
+  /// Safar progressini yangilash - IKKALA FUNKSIYA UCHUN
+  void _updateTripProgress() {
+    Timer.periodic(const Duration(seconds: 1), (timer) {
+      if (_tripProgress < 1.0) {
+        setState(() {
+          _tripProgress += 0.05;
+          _estimatedArrivalTime = ((_isAutoTaxiStarted ? _autoTaxiArrivalTime : 5) * (1 - _tripProgress)).ceil();
+          if (_estimatedArrivalTime <= 0) {
+            _estimatedArrivalTime = 0;
+            timer.cancel();
+            _showRatingDialogToUser();
+          }
+        });
+      } else {
+        timer.cancel();
+      }
+    });
   }
 
   /// Haydovchilar ro'yxatini ko'rsatish dialogi
@@ -1244,7 +1382,7 @@ Padding(
       context: context,
       builder: (BuildContext context) {
         return AlertDialog(
-          title: Text("Mavjud haydovchilar"),
+          title: const Text("Mavjud haydovchilar"),
           content: SizedBox(
             width: double.maxFinite,
             child: ListView.builder(
@@ -1253,7 +1391,7 @@ Padding(
               itemBuilder: (context, index) {
                 final driver = demoDrivers[index];
                 return ListTile(
-                  leading: Icon(Icons.person, size: 40),
+                  leading: const Icon(Icons.person, size: 40),
                   title: Text(driver['name']),
                   subtitle: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -1262,14 +1400,14 @@ Padding(
                       Row(
                         mainAxisAlignment: MainAxisAlignment.start,
                         children: [
-                          Icon(Icons.star, color: Colors.amber, size: 16),
+                          const Icon(Icons.star, color: Colors.amber, size: 16),
                           Text(" ${driver['rating']}"),
-                          SizedBox(width: 10),
-                          Icon(Icons.directions_car, size: 16),
+                          const SizedBox(width: 10),
+                          const Icon(Icons.directions_car, size: 16),
                           Text(" ${driver['distance']}"),
                         ],
                       ),
-                      Text("${driver['price']}", style: TextStyle(fontWeight: FontWeight.bold)),
+                      Text("${driver['price']}", style: const TextStyle(fontWeight: FontWeight.bold)),
                     ],
                   ),
                   trailing: ElevatedButton(
@@ -1277,7 +1415,7 @@ Padding(
                       Navigator.pop(context);
                       _selectDriver(driver);
                     },
-                    child: Text("Tanlash"),
+                    child: const Text("Tanlash"),
                   ),
                 );
               },
@@ -1286,7 +1424,7 @@ Padding(
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(context),
-              child: Text("Bekor qilish"),
+              child: const Text("Bekor qilish"),
             ),
           ],
         );
@@ -1299,146 +1437,6 @@ Padding(
     _startSearchAnimation();
   }
 
-  /// Avtomatik taksi qidiruvini boshlash
-  void _startAutoTaxiSearch() {
-    setState(() {
-      _isSearching = true;
-      _foundTaxisCount = 0;
-      _showAutoTaxiButton = false;
-    });
-
-    _searchAnimationTimer = Timer.periodic(Duration(milliseconds: 800), (timer) {
-      if (_searchZoomLevel > 12.0) {
-        setState(() {
-          _searchZoomLevel -= 0.3;
-          _foundTaxisCount += 1;
-        });
-        _animateCameraZoom(_searchZoomLevel);
-      } else {
-        timer.cancel();
-        _showDriverFoundDialog();
-      }
-    });
-  }
-
-  /// Topilgan haydovchi dialogini ko'rsatish
-  void _showDriverFoundDialog() {
-    // Taxminiy haydovchi ma'lumotlari
-    Map<String, dynamic> foundDriver = {
-      'name': 'Alijon Valiyev',
-      'car': 'Cobalt',
-      'color': 'Oq',
-      'number': '01 A 250 AA',
-      'rating': 4.8,
-      'eta': '5 daqiqa',
-      'price': '15,000 so\'m'
-    };
-
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          title: Text("Topildi! Sizga mos haydovchi", style: TextStyle(fontSize: 18)),
-          content: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                CircleAvatar(
-                  radius: 30,
-                  backgroundColor: Colors.blue,
-                  child: Text(
-                    foundDriver['name'].substring(0, 1),
-                    style: TextStyle(fontSize: 24, color: Colors.white),
-                  ),
-                ),
-                SizedBox(height: 10),
-                Text(foundDriver['name'], style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-                Text("${foundDriver['car']} • ${foundDriver['color']} • ${foundDriver['number']}"),
-                SizedBox(height: 10),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(Icons.star, color: Colors.amber, size: 16),
-                    Text(" ${foundDriver['rating']}"),
-                    SizedBox(width: 10),
-                    Icon(Icons.access_time, size: 16),
-                    Text(" ${foundDriver['eta']}"),
-                  ],
-                ),
-                SizedBox(height: 10),
-                Container(
-                  padding: EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: Colors.green.shade50,
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Text(
-                    "Narx: ${foundDriver['price']}",
-                    style: TextStyle(color: Colors.green, fontWeight: FontWeight.bold),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () {
-                Navigator.pop(context);
-                _startAutoTaxiSearch(); // Yangi qidiruv
-              },
-              child: Text("Boshqa haydovchi", style: TextStyle(color: Colors.grey)),
-            ),
-            ElevatedButton(
-              onPressed: () {
-                Navigator.pop(context);
-                _placeAutoTaxiOrder(foundDriver);
-              },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.green,
-              ),
-              child: Text("Tasdiqlash", style: TextStyle(color: Colors.white)),
-            ),
-          ],
-        );
-      },
-    );
-  }
-
-  /// Avtomatik taksi buyurtmasini berish
-  void _placeAutoTaxiOrder(Map<String, dynamic> driver) {
-    setState(() {
-      _isOrderPlaced = true;
-      _isOrderAccepted = false;
-      _showAutoTaxiButton = false;
-    });
-
-    // Buyurtma qabul qilinishini simulyatsiya qilish
-    _orderAcceptanceTimer = Timer(Duration(seconds: 3), () {
-      setState(() {
-        _isOrderAccepted = true;
-        _orderDetails = {
-          'driverName': driver['name'],
-          'driverPhone': '+998901234567',
-          'carModel': driver['car'],
-          'carColor': driver['color'],
-          'carNumber': driver['number'],
-          'arrivalTime': driver['eta'],
-          'orderTime': DateTime.now().toString(),
-          'from': _savedPickupAddress,
-          'to': _selectedDestinationAddress,
-          'serviceType': _selectedServiceType,
-          'paymentType': _selectedPaymentType,
-          'price': driver['price'],
-          'license': 'Andijon shahar tumani'
-        };
-      });
-      
-      // Haydovchi markerini qo'shish
-      _addDriverMarker();
-    });
-  }
-
   /// Qidiruv animatsiyasini boshlash
   void _startSearchAnimation() {
     setState(() {
@@ -1447,7 +1445,7 @@ Padding(
       _showSignalButton = false;
     });
 
-    _searchAnimationTimer = Timer.periodic(Duration(milliseconds: 800), (timer) {
+    _searchAnimationTimer = Timer.periodic(const Duration(milliseconds: 800), (timer) {
       if (_searchZoomLevel > 12.0) {
         setState(() {
           _searchZoomLevel -= 0.3;
@@ -1488,12 +1486,12 @@ Padding(
 
       setState(() {
         _driverMarker = Marker(
-          markerId: MarkerId('driver'),
+          markerId: MarkerId(_isAutoTaxiStarted ? 'auto_taxi_driver' : 'signal_driver'),
           position: driverLocation,
           icon: _driverIcon!,
           infoWindow: InfoWindow(
-            title: 'Haydovchingiz',
-            snippet: 'Yetib borish: ${_orderDetails!['arrivalTime']}',
+            title: _isAutoTaxiStarted ? 'Avtomatik taksi haydovchisi' : 'Haydovchingiz',
+            snippet: 'Yetib borish: $_estimatedArrivalTime daqiqa',
           ),
         );
       });
@@ -1508,7 +1506,7 @@ Padding(
       final controller = await _controllerGoogleMaps.future;
       final double centerLat = (_savedPickupLocation!.latitude + _driverMarker!.position.latitude) / 2;
       final double centerLng = (_savedPickupLocation!.longitude + _driverMarker!.position.longitude) / 2;
-      final double zoomLevel = 14.0;
+      const double zoomLevel = 14.0;
       
       await controller.animateCamera(
         CameraUpdate.newCameraPosition(
@@ -1519,36 +1517,6 @@ Padding(
         ),
       );
     }
-  }
-
-  /// Xizmatni boshlash
-  void _startService() {
-    _serviceTimer = Timer(Duration(seconds: 5), () {
-      setState(() {
-        _isServiceStarted = true;
-        _estimatedArrivalTime = 3;
-      });
-      _updateTripProgress();
-    });
-  }
-
-  /// Safar progressini yangilash
-  void _updateTripProgress() {
-    Timer.periodic(Duration(seconds: 1), (timer) {
-      if (_tripProgress < 1.0) {
-        setState(() {
-          _tripProgress += 0.05;
-          _estimatedArrivalTime = (3 * (1 - _tripProgress)).ceil();
-          if (_estimatedArrivalTime <= 0) {
-            _estimatedArrivalTime = 0;
-            timer.cancel();
-            _showRatingDialogToUser();
-          }
-        });
-      } else {
-        timer.cancel();
-      }
-    });
   }
 
   /// Baholash dialogini ko'rsatish
@@ -1574,6 +1542,7 @@ Padding(
     setState(() {
       _isServiceStarted = false;
       _isDriverAccepted = false;
+      _isAutoTaxiStarted = false;
       _driverMarker = null;
       _tripProgress = 0.0;
     });
@@ -1585,40 +1554,10 @@ Padding(
     _showRatingDialogToUser();
   }
 
-  /// Buyurtma berish funksiyasi
-  void _placeOrder() {
-    setState(() {
-      _isOrderPlaced = true;
-      _isOrderAccepted = false;
-      _showAutoTaxiButton = false;
-    });
-
-    _orderAcceptanceTimer = Timer(Duration(seconds: 3), () {
-      setState(() {
-        _isOrderAccepted = true;
-        _orderDetails = {
-          'driverName': 'Ali Valiyev',
-          'driverPhone': '+998901234567',
-          'carModel': 'Cobalt',
-          'carColor': 'Oq',
-          'carNumber': '01 A 123 AA',
-          'arrivalTime': '5 daqiqa',
-          'orderTime': DateTime.now().toString(),
-          'from': _savedPickupAddress,
-          'to': _selectedDestinationAddress,
-          'serviceType': _selectedServiceType,
-          'paymentType': _selectedPaymentType,
-          'price': '15,000 so\'m',
-          'license': 'Andijon shahar tumani'
-        };
-      });
-    });
-  }
-
-
   /// Haydovchiga qo'ng'iroq qilish funksiyasi
   void _callDriver() {
-    _showErrorSnackbar("Haydovchiga qo'ng'iroq qilinmoqda: ${_orderDetails?['driverPhone']}");
+    String phoneNumber = _isAutoTaxiStarted ? _autoTaxiDriver!['phone'] : "+998901234567";
+    _showErrorSnackbar("Haydovchiga qo'ng'iroq qilinmoqda: $phoneNumber");
   }
 
   /// Buyurtma tafsilotlarini ko'rsatish funksiyasi
@@ -1629,41 +1568,48 @@ Padding(
         return StatefulBuilder(
           builder: (context, setState) {
             return AlertDialog(
-              title: Text("Buyurtma tafsilotlari"),
+              title: Text(_isAutoTaxiStarted ? "Avtomatik taksi tafsilotlari" : "Buyurtma tafsilotlari"),
               content: SingleChildScrollView(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    if (_orderDetails != null) ...[
-                      _buildDetailItem("Haydovchi", _orderDetails!['driverName']),
-                      _buildDetailItem("Buyurtma vaqti", _orderDetails!['orderTime']),
-                      _buildDetailItem("Qayerdan", _orderDetails!['from']),
-                      _buildDetailItem("Qayerga", _orderDetails!['to']),
-                      _buildDetailItem("Mashina", "${_orderDetails!['carModel']} ${_orderDetails!['carColor']} ${_orderDetails!['carNumber']}"),
-                      _buildDetailItem("Xizmat turi", _orderDetails!['serviceType']),
-                      _buildDetailItem("To'lov turi", _orderDetails!['paymentType']),
-                      _buildDetailItem("Narx", _orderDetails!['price']),
-                      _buildDetailItem("Litsenziya", _orderDetails!['license']),
+                    if (_isAutoTaxiStarted && _autoTaxiDriver != null) ...[
+                      _buildDetailItem("Haydovchi", _autoTaxiDriver!['name']),
+                      _buildDetailItem("Xizmat turi", _selectedServiceType),
+                      _buildDetailItem("To'lov turi", _selectedPaymentType),
+                      _buildDetailItem("Narx", "${_autoTaxiDriver!['price']} so'm"),
+                      _buildDetailItem("Mashina", "${_autoTaxiDriver!['car']} • ${_autoTaxiDriver!['color']} • ${_autoTaxiDriver!['number']}"),
+                      _buildDetailItem("Reyting", _autoTaxiDriver!['rating'].toString()),
+                    ] else if (_selectedDriver != null) ...[
+                      _buildDetailItem("Haydovchi", _selectedDriver!.name),
+                      _buildDetailItem("Mashina", "${_selectedDriver!.carModel} • ${_selectedDriver!.carColor} • ${_selectedDriver!.carNumber}"),
+                      _buildDetailItem("Narx", "${_signalPrice.toStringAsFixed(0)} so'm"),
+                      _buildDetailItem("Reyting", _selectedDriver!.rating.toString()),
                     ],
-                    SizedBox(height: 20),
-                    // To'lov usulini o'zgartirish imkoniyati
-                    Text("To'lov usulini o'zgartirish:", style: TextStyle(fontWeight: FontWeight.bold)),
+                    const SizedBox(height: 20),
+                    const Text("To'lov usulini o'zgartirish:", style: TextStyle(fontWeight: FontWeight.bold)),
                     DropdownButton<String>(
-                      value: _orderDetails != null ? _orderDetails!['paymentType'] : _selectedPaymentType,
+                      value: _isAutoTaxiStarted ? _selectedPaymentType : _signalParameters.paymentPreference,
                       onChanged: (value) {
                         setState(() {
-                          if (_orderDetails != null) {
-                            _orderDetails!['paymentType'] = value!;
-                          } else {
+                          if (_isAutoTaxiStarted) {
                             _selectedPaymentType = value!;
+                          } else {
+                            _signalParameters = SignalParameters(
+                              passengerCount: _signalParameters.passengerCount,
+                              carType: _signalParameters.carType,
+                              specialRequest: _signalParameters.specialRequest,
+                              needHelpWithLuggage: _signalParameters.needHelpWithLuggage,
+                              paymentPreference: value!,
+                            );
                           }
                         });
                       },
                       items: _paymentMethods.map((String value) {
                         return DropdownMenuItem<String>(
                           value: value,
-                          child: Text(value),
+                            child: Text(value),
                         );
                       }).toList(),
                     ),
@@ -1673,7 +1619,7 @@ Padding(
               actions: [
                 TextButton(
                   onPressed: () => Navigator.pop(context),
-                  child: Text("Yopish"),
+                  child: const Text("Yopish"),
                 ),
               ],
             );
@@ -1689,22 +1635,26 @@ Padding(
       context: context,
       builder: (BuildContext context) {
         return AlertDialog(
-          title: Text("Buyurtmani bekor qilish"),
-          content: Text("Rostan ham buyurtmani bekor qilmoqchimisiz?"),
+          title: const Text("Buyurtmani bekor qilish"),
+          content: const Text("Rostan ham buyurtmani bekor qilmoqchimisiz?"),
           actions: [
             TextButton(
               onPressed: () {
-                Navigator.pop(context); // Dialogni yopish
+                Navigator.pop(context);
               },
-              child: Text("Yo'q", style: TextStyle(color: Colors.blue)),
+              child: const Text("Yo'q", style: TextStyle(color: Colors.blue)),
             ),
             TextButton(
               onPressed: () {
-                Navigator.pop(context); // Dialogni yopish
-                _resetSignalState(); // Buyurtmani bekor qilish
+                Navigator.pop(context);
+                if (_isAutoTaxiStarted) {
+                  _resetAutoTaxiState();
+                } else {
+                  _resetSignalState();
+                }
                 _showErrorSnackbar("Buyurtma bekor qilindi");
               },
-              child: Text("Ha", style: TextStyle(color: Colors.red)),
+              child: const Text("Ha", style: TextStyle(color: Colors.red)),
             ),
           ],
         );
@@ -1715,18 +1665,18 @@ Padding(
   /// Tafsilotlar elementi qurish
   Widget _buildDetailItem(String title, String value) {
     return Padding(
-      padding: EdgeInsets.symmetric(vertical: 8),
+      padding: const EdgeInsets.symmetric(vertical: 8),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
             title,
-            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
           ),
-          SizedBox(height: 4),
+          const SizedBox(height: 4),
           Text(
             value,
-            style: TextStyle(fontSize: 14),
+            style: const TextStyle(fontSize: 14),
           ),
         ],
       ),
@@ -1752,19 +1702,19 @@ Padding(
                     color: Colors.blue.withAlpha(100),
                     blurRadius: 6,
                     spreadRadius: 1,
-                    offset: Offset(0, 2),
+                    offset: const Offset(0, 2),
                   )
                 else
                   BoxShadow(
                     color: Colors.black.withAlpha(26),
                     blurRadius: 4,
-                    offset: Offset(0, 1),
+                    offset: const Offset(0, 1),
                   ),
               ],
             ),
             child: Icon(icon, color: Colors.blue, size: 28),
           ),
-          SizedBox(height: 6),
+          const SizedBox(height: 6),
           Text(
             label, 
             style: TextStyle(
@@ -1790,12 +1740,12 @@ Padding(
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: Text("Lokatsiya xizmati o'chirilgan"),
-        content: Text("Iltimos, joylashuv xizmatini yoqing"),
+        title: const Text("Lokatsiya xizmati o'chirilgan"),
+        content: const Text("Iltimos, joylashuv xizmatini yoqing"),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: Text("OK"),
+            child: const Text("OK"),
           ),
         ],
       ),
@@ -1807,12 +1757,12 @@ Padding(
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: Text("Ruxsat rad etildi"),
-        content: Text("Iltimos, ilova uchun joylashuv ruxsatini bering"),
+        title: const Text("Ruxsat rad etildi"),
+        content: const Text("Iltimos, ilova uchun joylashuv ruxsatini bering"),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: Text("OK"),
+            child: const Text("OK"),
           ),
         ],
       ),
@@ -1824,12 +1774,12 @@ Padding(
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: Text("Ruxsat doimiy ravishda rad etildi"),
-        content: Text("Sozlamalarga borib, ruxsatni qo'lda yoqing"),
+        title: const Text("Ruxsat doimiy ravishda rad etildi"),
+        content: const Text("Sozlamalarga borib, ruxsatni qo'lda yoqing"),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: Text("OK"),
+            child: const Text("OK"),
           ),
         ],
       ),
@@ -1860,7 +1810,7 @@ Padding(
 
           // MARKER VA SOYA ANIMATSIYASI
           Align(
-            alignment: Alignment(0.0, -0.5),
+            alignment: const Alignment(0.0, -0.5),
             child: AnimatedBuilder(
               animation: _animationController,
               builder: (context, child) {
@@ -1899,7 +1849,7 @@ Padding(
             child: FloatingActionButton(
               onPressed: () => Navigator.pop(context),
               backgroundColor: Colors.white,
-              child: Icon(Icons.arrow_back, color: Colors.blue),
+              child: const Icon(Icons.arrow_back, color: Colors.blue),
             ),
           ),
 
@@ -1910,37 +1860,37 @@ Padding(
             child: FloatingActionButton(
               onPressed: _goToCurrentLocation,
               backgroundColor: Colors.white,
-              child: Icon(Icons.my_location, color: Colors.blue),
+              child: const Icon(Icons.my_location, color: Colors.blue),
             ),
           ),
 
           // Qidiruv jarayonida bekor qilish tugmasi
-          if (_isSearching)
+          if (_isSearching || _isAutoTaxiSearching)
             Positioned(
               top: 90,
               right: 15,
               child: FloatingActionButton(
                 onPressed: _cancelSearch,
                 backgroundColor: Colors.white,
-                child: Icon(Icons.close, color: Colors.red),
+                child: const Icon(Icons.close, color: Colors.red),
               ),
             ),
 
           // Qidiruv natijasi - topilgan taksilar soni
-          if (_isSearching)
+          if (_isSearching || _isAutoTaxiSearching)
             Positioned(
               top: 25,
               left: MediaQuery.of(context).size.width / 2 - 100,
               child: Container(
-                padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                 decoration: BoxDecoration(
                   color: Colors.white,
                   borderRadius: BorderRadius.circular(20),
-                  boxShadow: [BoxShadow(color: Colors.black12, blurRadius: 4, offset: Offset(0, 2))],
+                  boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 4, offset: Offset(0, 2))],
                 ),
                 child: Text(
                   "Topildi: $_foundTaxisCount ta taksi",
-                  style: TextStyle(color: Colors.blue, fontWeight: FontWeight.bold),
+                  style: const TextStyle(color: Colors.blue, fontWeight: FontWeight.bold),
                 ),
               ),
             ),
@@ -1951,16 +1901,16 @@ Padding(
             child: Container(
               decoration: BoxDecoration(
                 color: Colors.blue.shade600,
-                borderRadius: BorderRadius.vertical(top: Radius.circular(30)),
-                boxShadow: [BoxShadow(color: Color.fromRGBO(0, 0, 0, 0.1), blurRadius: 8, offset: Offset(0, -2))],
+                borderRadius: const BorderRadius.vertical(top: Radius.circular(30)),
+                boxShadow: const [BoxShadow(color: Color.fromRGBO(0, 0, 0, 0.1), blurRadius: 8, offset: Offset(0, -2))],
               ),
-              padding: EdgeInsets.only(left: 20, right: 20, top: 16, bottom: 20),
+              padding: const EdgeInsets.only(left: 20, right: 20, top: 16, bottom: 20),
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
                 
                   // Tugmalar qatori
-                  if (!_isDriverAccepted && !_isServiceStarted)
+                  if (!_isDriverAccepted && !_isServiceStarted && !_isAutoTaxiStarted)
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
@@ -1969,84 +1919,128 @@ Padding(
                       _buildButton(Icons.groups, "Haydovchilar", _isDriversButtonActive, _showAvailableDrivers),
                     ],
                   ),
-                  SizedBox(height: 20),
-                  // Haydovchi qabul qilgandan keyingi interfeys
-                  if (_isDriverAccepted && !_isServiceStarted)
+                  const SizedBox(height: 20),
+                  
+                  // AVTOMATIK TAKSI HOLATLARI - SIGNALGA O'XSHASH KONTEYNERLAR
+                  if (_isAutoTaxiSearching)
                   Container(
                     width: double.infinity,
-                    margin: EdgeInsets.only(bottom: 10),
-                    padding: EdgeInsets.all(16),
+                    margin: const EdgeInsets.only(bottom: 10),
+                    padding: const EdgeInsets.all(16),
                     decoration: BoxDecoration(
                       color: Colors.white,
                       borderRadius: BorderRadius.circular(15),
-                      boxShadow: [BoxShadow(color: Colors.black12, blurRadius: 4, offset: Offset(0, 2))],
+                      boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 4, offset: Offset(0, 2))],
                     ),
                     child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text("Haydovchingiz yo'lda", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-                        SizedBox(height: 10),
-                        Row(
-                          children: [
-                            Icon(Icons.person, size: 40, color: Colors.blue),
-                            SizedBox(width: 10),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text("Alijon Valiyev", style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-                                  Text("Cobalt • Oq • 01 A 250 AA", style: TextStyle(fontSize: 14)),
-                                ],
-                              ),
-                            ),
-                            IconButton(
-                              icon: Icon(Icons.phone, color: Colors.green, size: 30),
-                              onPressed: () => _callDriver(),
-                            ),
-                          ],
-                        ),
-                        SizedBox(height: 10),
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Text("Yetib borish: $_estimatedArrivalTime daqiqa", style: TextStyle(fontSize: 14, color: Colors.green)),
-                            Text("15,000 so'm", style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.blue)),
-                          ],
-                        ),
-                        SizedBox(height: 10),
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            ElevatedButton(
-                              onPressed: _showOrderDetails,
-                              child: Text("Batafsil ma'lumot"),
-                            ),
-                            TextButton(
-                              onPressed: _cancelDriverOrder,
-                              child: Text("Bekor qilish", style: TextStyle(color: Colors.red)),
-                            ),
-                          ],
-                        ),
-                        SizedBox(height: 10),
-                        LinearProgressIndicator(
-                          value: _tripProgress,
-                          backgroundColor: Colors.grey[300],
-                          valueColor: AlwaysStoppedAnimation<Color>(Colors.blue),
+                        const CircularProgressIndicator(),
+                        const SizedBox(height: 10),
+                        const Text("Avtomatik taksi qidirilmoqda...", style: TextStyle(fontSize: 16)),
+                        const SizedBox(height: 10),
+                        Text("Topildi: $_foundTaxisCount ta taksi", style: const TextStyle(color: Colors.blue)),
+                      ],
+                    ),
+                  ),
+                  
+                  // Haydovchidan javob kutilayotganida (signal jo'natishdagi bilan bir xil)
+                  if (_isWaitingForDriver && _isAutoTaxiStarted)
+                  Container(
+                    width: double.infinity,
+                    margin: const EdgeInsets.only(bottom: 10),
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: Colors.orange.shade50,
+                      borderRadius: BorderRadius.circular(15),
+                    ),
+                    child: Row(
+                      children: [
+                        const CircularProgressIndicator(valueColor: AlwaysStoppedAnimation<Color>(Colors.orange)),
+                        const SizedBox(width: 16),
+                        const Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text("Haydovchidan javob kutilmoqda...", style: TextStyle(fontSize: 16, color: Colors.orange)),
+                              Text("Avtomatik taksi xizmati", style: TextStyle(fontSize: 14, color: Colors.orange)),
+                            ],
+                          ),
                         ),
                       ],
                     ),
                   ),
 
-                  // Xizmat boshlangandan keyingi interfeys
-                  if (_isServiceStarted)
+                  // Haydovchi yo'lda (signal jo'natishdagi bilan bir xil konteyner)
+                  if (_isDriverAccepted && _isAutoTaxiStarted && !_isServiceStarted)
                   Container(
                     width: double.infinity,
-                    margin: EdgeInsets.only(bottom: 10),
-                    padding: EdgeInsets.all(16),
+                    margin: const EdgeInsets.only(bottom: 10),
+                    padding: const EdgeInsets.all(16),
                     decoration: BoxDecoration(
                       color: Colors.white,
                       borderRadius: BorderRadius.circular(15),
-                      boxShadow: [BoxShadow(color: Colors.black12, blurRadius: 4, offset: Offset(0, 2))],
+                      boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 4, offset: Offset(0, 2))],
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text("Haydovchingiz yo'lda", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                        const SizedBox(height: 10),
+                        Row(
+                          children: [
+                            const Icon(Icons.person, size: 40, color: Colors.blue),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(_autoTaxiDriver!['name'], style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                                  Text("${_autoTaxiDriver!['car']} • ${_autoTaxiDriver!['color']} • ${_autoTaxiDriver!['number']}", style: const TextStyle(fontSize: 14)),
+                                ],
+                              ),
+                            ),
+                            IconButton(
+                              icon: const Icon(Icons.phone, color: Colors.green, size: 30),
+                              onPressed: () => _callDriver(),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 10),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Text("Yetib borish: $_estimatedArrivalTime daqiqa", style: const TextStyle(fontSize: 14, color: Colors.green)),
+                            Text("${_autoTaxiDriver!['price']} so'm", style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.blue)),
+                          ],
+                        ),
+                        const SizedBox(height: 10),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            ElevatedButton(
+                              onPressed: _showOrderDetails,
+                              child: const Text("Batafsil ma'lumot"),
+                            ),
+                            TextButton(
+                              onPressed: _cancelDriverOrder,
+                              child: const Text("Bekor qilish", style: TextStyle(color: Colors.red)),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+
+                  // Safarda (signal jo'natishdagi bilan bir xil konteyner)
+                  if (_isServiceStarted && _isAutoTaxiStarted)
+                  Container(
+                    width: double.infinity,
+                    margin: const EdgeInsets.only(bottom: 10),
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(15),
+                      boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 4, offset: Offset(0, 2))],
                     ),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -2054,65 +2048,65 @@ Padding(
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
-                            Text("Safarda", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                            const Text("Safarda", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
                             IconButton(
-                              icon: Icon(Icons.expand_less),
+                              icon: const Icon(Icons.expand_less),
                               onPressed: _showOrderDetails,
                             ),
                           ],
                         ),
-                        SizedBox(height: 10),
+                        const SizedBox(height: 10),
                         Row(
                           children: [
-                            Icon(Icons.location_on, color: Colors.red, size: 20),
-                            SizedBox(width: 10),
+                            const Icon(Icons.location_on, color: Colors.red, size: 20),
+                            const SizedBox(width: 10),
                             Expanded(
                               child: Text(
                                 _savedPickupAddress ?? "Joriy manzil",
-                                style: TextStyle(fontSize: 14),
+                                style: const TextStyle(fontSize: 14),
                                 overflow: TextOverflow.ellipsis,
                               ),
                             ),
                           ],
                         ),
-                        SizedBox(height: 5),
+                        const SizedBox(height: 5),
                         Row(
                           children: [
-                            Icon(Icons.navigation, color: Colors.blue, size: 20),
-                            SizedBox(width: 10),
+                            const Icon(Icons.navigation, color: Colors.blue, size: 20),
+                            const SizedBox(width: 10),
                             Expanded(
                               child: Text(
                                 _selectedDestinationAddress ?? "Boradigan manzil",
-                                style: TextStyle(fontSize: 14),
+                                style: const TextStyle(fontSize: 14),
                                 overflow: TextOverflow.ellipsis,
                               ),
                             ),
                           ],
                         ),
-                        SizedBox(height: 10),
+                        const SizedBox(height: 10),
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
-                            Text("Yetib borish: $_estimatedArrivalTime daqiqa", style: TextStyle(fontSize: 14, color: Colors.green)),
-                            Text("Cobalt • 01 A 123 AA", style: TextStyle(fontSize: 14, color: Colors.grey)),
+                            Text("Yetib borish: $_estimatedArrivalTime daqiqa", style: const TextStyle(fontSize: 14, color: Colors.green)),
+                            Text("${_autoTaxiDriver!['car']} • ${_autoTaxiDriver!['number']}", style: const TextStyle(fontSize: 14, color: Colors.grey)),
                           ],
                         ),
-                        SizedBox(height: 10),
+                        const SizedBox(height: 10),
                         LinearProgressIndicator(
                           value: _tripProgress,
                           backgroundColor: Colors.grey[300],
-                          valueColor: AlwaysStoppedAnimation<Color>(Colors.blue),
+                          valueColor: const AlwaysStoppedAnimation<Color>(Colors.blue),
                         ),
-                        SizedBox(height: 10),
+                        const SizedBox(height: 10),
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
                             ElevatedButton(
                               onPressed: _finishService,
-                              child: Text("Xizmatni tugatish"),
+                              child: const Text("Xizmatni tugatish"),
                             ),
                             IconButton(
-                              icon: Icon(Icons.star, color: Colors.green, size: 30), 
+                              icon: const Icon(Icons.star, color: Colors.green, size: 30), 
                               onPressed: _showRatingDialogToUser,
                             ),
                           ],
@@ -2121,120 +2115,12 @@ Padding(
                     ),
                   ),
 
-                  // JORIY MANZIL KONTEYNERI
-                  if (!_isDriverAccepted && !_isServiceStarted)
-                  Container(
-                    width: double.infinity,
-                    margin: EdgeInsets.only(bottom: 5),
-                    padding: EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(20),
-                      boxShadow: [BoxShadow(color: Colors.black12, blurRadius: 4, offset: Offset(0, 2))],
-                    ),
-                    child: Row(
-                      children: [
-                        Icon(Icons.location_on, color: Colors.blue, size: 24),
-                        SizedBox(width: 12),
-                        Expanded(
-                          child: _isLoadingAddress
-                              ? Row(
-                                  children: [
-                                    SizedBox(
-                                      width: 20,
-                                      height: 20,
-                                      child: CircularProgressIndicator(strokeWidth: 2, color: Colors.blue),
-                                    ),
-                                    SizedBox(width: 12),
-                                    Text("Manzil aniqlanmoqda...", style: TextStyle(color: Colors.grey.shade600, fontSize: 16)),
-                                  ],
-                                )
-                              : Text(
-                                  _savedPickupAddress ?? _currentAddress,
-                                  style: TextStyle(color: Colors.black, fontSize: 16, fontWeight: FontWeight.w500),
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                        ),
-                      ],
-                    ),
-                  ),
-
-                  // YO'NALISHNI KIRITISH KONTEYNERI
-                  if (!_isDriverAccepted && !_isServiceStarted)
-                  SizedBox(height: 10),
-
-                  if (!_isDriverAccepted && !_isServiceStarted)
-                  GestureDetector(
-                    onTap: _selectedDestinationAddress == null ? _handleDestinationSelection : null,
-                    child: Container(
-                      height: 50,
-                      padding: EdgeInsets.symmetric(horizontal: 16),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(20),
-                        boxShadow: [BoxShadow(color: Colors.black12, blurRadius: 4, offset: Offset(0, 2))],
-                      ),
-                    child: Row(
-                        children: [
-                          Icon(
-                            _selectedDestinationAddress != null ? Icons.location_on : Icons.search,
-                            color: _selectedDestinationAddress != null ? Colors.blue : Colors.grey,
-                            size: 24,
-                          ),
-                          SizedBox(width: 12),
-                          Expanded(
-                            child: SingleChildScrollView(
-                              scrollDirection: Axis.horizontal,
-                              child: Text(
-                                _selectedDestinationAddress ?? "Yo'nalishni kiriting",
-                                style: TextStyle(
-                                  color: _selectedDestinationAddress != null ? Colors.black : Colors.grey,
-                                  fontSize: 16,
-                                  fontWeight: _selectedDestinationAddress != null ? FontWeight.w500 : FontWeight.normal,
-                                ),
-                              ),
-                            ),
-                          ),
-                          if (_selectedDestinationAddress != null)
-                            IconButton(
-                              icon: Icon(Icons.close, color: Colors.grey),
-                              onPressed: _clearSelectedDestination,
-                            )
-                          else
-                            Icon(Icons.chevron_right, color: Colors.grey),
-                        ],
-                      ),
-                    ),
-                  ),
-
-                  SizedBox(height: 15),
-
-                  // Signal jo'natish tugmasi
-                  if (_isSignalButtonActive && _showSignalButton && !_isDriverAccepted && !_isServiceStarted)
-                    Container(
-                      width: double.infinity,
-                      margin: EdgeInsets.only(bottom: 10),
-                      child: ElevatedButton(
-                        onPressed: _sendMessageToNearestDriver,
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Color(0xFF13B58C),
-                          padding: EdgeInsets.symmetric(vertical: 16),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
-                        ),
-                        child: Text(
-                          "Eng yaqin haydovchiga xabar jo'natish",
-                          style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold),
-                        ),
-                      ),
-                    ),
-
- // Signal holatini ko'rsatish
+                  // SIGNAL HOLATINI KO'RSATISH
                   if (_isFindingNearestDriver || _isSendingSignal || _isWaitingForDriver)
                     Container(
                       width: double.infinity,
-                      margin: EdgeInsets.only(bottom: 10),
-                      padding: EdgeInsets.all(16),
+                      margin: const EdgeInsets.only(bottom: 10),
+                      padding: const EdgeInsets.all(16),
                       decoration: BoxDecoration(
                         color: Colors.blue.shade50,
                         borderRadius: BorderRadius.circular(15),
@@ -2247,7 +2133,7 @@ Padding(
                               _isSendingSignal ? Colors.blue : Colors.orange
                             ),
                           ),
-                          SizedBox(width: 16),
+                          const SizedBox(width: 16),
                           Expanded(
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
@@ -2279,47 +2165,305 @@ Padding(
                       ),
                     ),
 
+                  // Haydovchi qabul qilgandan keyingi interfeys
+                  if (_isDriverAccepted && !_isServiceStarted && !_isAutoTaxiStarted)
+                  Container(
+                    width: double.infinity,
+                    margin: const EdgeInsets.only(bottom: 10),
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(15),
+                      boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 4, offset: Offset(0, 2))],
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text("Haydovchingiz yo'lda", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                        const SizedBox(height: 10),
+                        Row(
+                          children: [
+                            const Icon(Icons.person, size: 40, color: Colors.blue),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  const Text("Alijon Valiyev", style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                                  const Text("Cobalt • Oq • 01 A 250 AA", style: TextStyle(fontSize: 14)),
+                                ],
+                              ),
+                            ),
+                            IconButton(
+                              icon: const Icon(Icons.phone, color: Colors.green, size: 30),
+                              onPressed: () => _callDriver(),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 10),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Text("Yetib borish: $_estimatedArrivalTime daqiqa", style: const TextStyle(fontSize: 14, color: Colors.green)),
+                            const Text("15,000 so'm", style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.blue)),
+                          ],
+                        ),
+                        const SizedBox(height: 10),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            ElevatedButton(
+                              onPressed: _showOrderDetails,
+                              child: const Text("Batafsil ma'lumot"),
+                            ),
+                            TextButton(
+                              onPressed: _cancelDriverOrder,
+                              child: const Text("Bekor qilish", style: TextStyle(color: Colors.red)),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 10),
+                        LinearProgressIndicator(
+                          value: _tripProgress,
+                          backgroundColor: Colors.grey[300],
+                          valueColor: const AlwaysStoppedAnimation<Color>(Colors.blue),
+                        ),
+                      ],
+                    ),
+                  ),
 
+                  // Xizmat boshlangandan keyingi interfeys
+                  if (_isServiceStarted && !_isAutoTaxiStarted)
+                  Container(
+                    width: double.infinity,
+                    margin: const EdgeInsets.only(bottom: 10),
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(15),
+                      boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 4, offset: Offset(0, 2))],
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            const Text("Safarda", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                            IconButton(
+                              icon: const Icon(Icons.expand_less),
+                              onPressed: _showOrderDetails,
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 10),
+                        Row(
+                          children: [
+                            const Icon(Icons.location_on, color: Colors.red, size: 20),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: Text(
+                                _savedPickupAddress ?? "Joriy manzil",
+                                style: const TextStyle(fontSize: 14),
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 5),
+                        Row(
+                          children: [
+                            const Icon(Icons.navigation, color: Colors.blue, size: 20),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: Text(
+                                _selectedDestinationAddress ?? "Boradigan manzil",
+                                style: const TextStyle(fontSize: 14),
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 10),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Text("Yetib borish: $_estimatedArrivalTime daqiqa", style: const TextStyle(fontSize: 14, color: Colors.green)),
+                            const Text("Cobalt • 01 A 123 AA", style: TextStyle(fontSize: 14, color: Colors.grey)),
+                          ],
+                        ),
+                        const SizedBox(height: 10),
+                        LinearProgressIndicator(
+                          value: _tripProgress,
+                          backgroundColor: Colors.grey[300],
+                          valueColor: const AlwaysStoppedAnimation<Color>(Colors.blue),
+                        ),
+                        const SizedBox(height: 10),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            ElevatedButton(
+                              onPressed: _finishService,
+                              child: const Text("Xizmatni tugatish"),
+                            ),
+                            IconButton(
+                              icon: const Icon(Icons.star, color: Colors.green, size: 30), 
+                              onPressed: _showRatingDialogToUser,
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
 
-                  // Avtomatik taksi uchun buyurtma berish tugmasi
-                  if (_isAutoTaxiButtonActive && _showAutoTaxiButton && !_isDriverAccepted && !_isServiceStarted)
+                  // JORIY MANZIL KONTEYNERI
+                  if (!_isDriverAccepted && !_isServiceStarted && !_isAutoTaxiStarted)
+                  Container(
+                    width: double.infinity,
+                    margin: const EdgeInsets.only(bottom: 5),
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(20),
+                      boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 4, offset: Offset(0, 2))],
+                    ),
+                    child: Row(
+                      children: [
+                        const Icon(Icons.location_on, color: Colors.blue, size: 24),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: _isLoadingAddress
+                              ? Row(
+                                  children: [
+                                    const SizedBox(
+                                      width: 20,
+                                      height: 20,
+                                      child: CircularProgressIndicator(strokeWidth: 2, color: Colors.blue),
+                                    ),
+                                    const SizedBox(width: 12),
+                                    Text("Manzil aniqlanmoqda...", style: TextStyle(color: Colors.grey.shade600, fontSize: 16)),
+                                  ],
+                                )
+                              : Text(
+                                  _savedPickupAddress ?? _currentAddress,
+                                  style: const TextStyle(color: Colors.black, fontSize: 16, fontWeight: FontWeight.w500),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                        ),
+                      ],
+                    ),
+                  ),
+
+                  // YO'NALISHNI KIRITISH KONTEYNERI
+                  if (!_isDriverAccepted && !_isServiceStarted && !_isAutoTaxiStarted)
+                  const SizedBox(height: 10),
+
+                  if (!_isDriverAccepted && !_isServiceStarted && !_isAutoTaxiStarted)
+                  GestureDetector(
+                    onTap: _selectedDestinationAddress == null ? _handleDestinationSelection : null,
+                    child: Container(
+                      height: 50,
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(20),
+                        boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 4, offset: Offset(0, 2))],
+                      ),
+                    child: Row(
+                        children: [
+                          Icon(
+                            _selectedDestinationAddress != null ? Icons.location_on : Icons.search,
+                            color: _selectedDestinationAddress != null ? Colors.blue : Colors.grey,
+                            size: 24,
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: SingleChildScrollView(
+                              scrollDirection: Axis.horizontal,
+                              child: Text(
+                                _selectedDestinationAddress ?? "Yo'nalishni kiriting",
+                                style: TextStyle(
+                                  color: _selectedDestinationAddress != null ? Colors.black : Colors.grey,
+                                  fontSize: 16,
+                                  fontWeight: _selectedDestinationAddress != null ? FontWeight.w500 : FontWeight.normal,
+                                ),
+                              ),
+                            ),
+                          ),
+                          if (_selectedDestinationAddress != null)
+                            IconButton(
+                              icon: const Icon(Icons.close, color: Colors.grey),
+                              onPressed: _clearSelectedDestination,
+                            )
+                          else
+                            const Icon(Icons.chevron_right, color: Colors.grey),
+                        ],
+                      ),
+                    ),
+                  ),
+
+                  const SizedBox(height: 15),
+
+                  // Signal jo'natish tugmasi
+                  if (_isSignalButtonActive && _showSignalButton && !_isDriverAccepted && !_isServiceStarted && !_isAutoTaxiStarted)
                     Container(
                       width: double.infinity,
-                      margin: EdgeInsets.only(bottom: 10),
+                      margin: const EdgeInsets.only(bottom: 10),
                       child: ElevatedButton(
-                        onPressed: _placeOrder,
+                        onPressed: _sendMessageToNearestDriver,
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: Color(0xFF13B58C),
-                          padding: EdgeInsets.symmetric(vertical: 16),
+                          backgroundColor: const Color(0xFF13B58C),
+                          padding: const EdgeInsets.symmetric(vertical: 16),
                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
                         ),
-                        child: Text(
-                          "Sizga mos haydovchini buyurtma qiling",
+                        child: const Text(
+                          "Eng yaqin haydovchiga xabar jo'natish",
+                          style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold),
+                        ),
+                      ),
+                    ),
+
+                  // Avtomatik taksi uchun buyurtma berish tugmasi
+                  if (_isAutoTaxiButtonActive && _showAutoTaxiButton && !_isDriverAccepted && !_isServiceStarted && !_isAutoTaxiStarted)
+                    Container(
+                      width: double.infinity,
+                      margin: const EdgeInsets.only(bottom: 10),
+                      child: ElevatedButton(
+                        onPressed: _startAutoTaxiSearch,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFF13B58C),
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+                        ),
+                        child: const Text(
+                          "Avtomatik taksi qidirish",
                           style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold),
                         ),
                       ),
                     ),
 
                   // Buyurtma yuborilayotganida kutish animatsiyasi
-                  if (_isOrderPlaced && !_isOrderAccepted && !_isDriverAccepted && !_isServiceStarted)
+                  if (_isOrderPlaced && !_isOrderAccepted && !_isDriverAccepted && !_isServiceStarted && !_isAutoTaxiStarted)
                     Container(
                       width: double.infinity,
-                      margin: EdgeInsets.only(bottom: 10),
-                      padding: EdgeInsets.symmetric(vertical: 16),
+                      margin: const EdgeInsets.only(bottom: 10),
+                      padding: const EdgeInsets.symmetric(vertical: 16),
                       decoration: BoxDecoration(
                         color: Colors.white,
                         borderRadius: BorderRadius.circular(15),
                       ),
                       child: Column(
                         children: [
-                          CircularProgressIndicator(valueColor: AlwaysStoppedAnimation<Color>(Colors.blue)),
-                          SizedBox(height: 10),
-                          Text("Buyurtma yuborilmoqda...", style: TextStyle(color: Colors.blue, fontSize: 16)),
-                          SizedBox(height: 10),
+                          const CircularProgressIndicator(valueColor: AlwaysStoppedAnimation<Color>(Colors.blue)),
+                          const SizedBox(height: 10),
+                          const Text("Buyurtma yuborilmoqda...", style: TextStyle(color: Colors.blue, fontSize: 16)),
+                          const SizedBox(height: 10),
                          
                         ],
                       ),
                     ),
+                    
                 ],
               ),
             ),

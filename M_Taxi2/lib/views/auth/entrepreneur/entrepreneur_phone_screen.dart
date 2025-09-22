@@ -90,7 +90,7 @@ class EntrepreneurPhoneScreen extends StatelessWidget {
               "Kod kelishi uchun bu yerga bosing", // SMS kod haqida eslatma
               textAlign: TextAlign.center, // Matnni markazga tekislash
               style: TextStyle(
-                color: Colors.white, // Oq rang
+                color: Color.fromARGB(255, 255, 255, 255), // Oq rang
                 fontSize: 18, // Shrift o'lchami
               ),
             ),
