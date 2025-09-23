@@ -215,6 +215,7 @@ class DriverInfo {
   final String licenseInfo;
   final LatLng currentLocation;
   final int eta;
+  final String carType;
 
   DriverInfo({
     required this.name,
@@ -227,6 +228,7 @@ class DriverInfo {
     required this.licenseInfo,
     required this.currentLocation,
     required this.eta,
+    this.carType = "Yengil",
   });
 }
 
@@ -283,7 +285,7 @@ class _TaxiOrderScreenState extends State<TaxiOrderScreen>
   bool _needLuggageHelp = false;
   final List<String> _selectedSpecialRequests = [];
 
-  // Buyurtma holati - ISHLATILMAYDI, O'CHIRILDI
+  // Buyurtma holati
   final bool _isOrderPlaced = false;
   final bool _isOrderAccepted = false;
   Timer? _orderAcceptanceTimer;
@@ -317,12 +319,18 @@ class _TaxiOrderScreenState extends State<TaxiOrderScreen>
   List<DriverInfo> _availableDrivers = [];
   double _signalPrice = 0.0;
 
-  // AVTOMATIK TAXI UCHUN YANGI HOLATLAR - SIGNALGA O'XSHASH HOLATLAR
+  // AVTOMATIK TAXI UCHUN YANGI HOLATLAR
   bool _isAutoTaxiSearching = false;
   bool _isAutoTaxiStarted = false;
   Map<String, dynamic>? _autoTaxiDriver;
   Timer? _autoTaxiTimer;
   int _autoTaxiArrivalTime = 5;
+
+  // 3-USUL: YO'NALISH BO'YICHA HAYDOVCHILAR UCHUN YANGI HOLATLAR
+  bool _isLoadingDrivers = false;
+  List<DriverInfo> _directionDrivers = [];
+  bool _isFilteringByDirection = false;
+  String? _currentDirectionFilter;
 
   // Maxsus so'rovlar ro'yxati
   final List<String> _specialRequests = [
@@ -372,7 +380,7 @@ class _TaxiOrderScreenState extends State<TaxiOrderScreen>
     _calculateSignalPrice();
   }
 
-  // Demo haydovchilar yaratish
+  // Demo haydovchilar yaratish (YO'NALISHLARGA MOS)
   void _createDemoDrivers() {
     _availableDrivers = [
       DriverInfo(
@@ -384,8 +392,9 @@ class _TaxiOrderScreenState extends State<TaxiOrderScreen>
         completedRides: 1247,
         phoneNumber: "+998901234567",
         licenseInfo: "AB1234567",
-        currentLocation: LatLng(40.805, 72.990),
-        eta: 5,
+        currentLocation: LatLng(40.798, 72.985), // Markazga yaqin
+        eta: 3,
+        carType: "Standart",
       ),
       DriverInfo(
         name: "Hasan Hasanov",
@@ -396,8 +405,9 @@ class _TaxiOrderScreenState extends State<TaxiOrderScreen>
         completedRides: 892,
         phoneNumber: "+998901234568",
         licenseInfo: "AB7654321",
-        currentLocation: LatLng(40.802, 72.985),
-        eta: 3,
+        currentLocation: LatLng(40.795, 72.975), // Shahrixon yo'nalishi
+        eta: 5,
+        carType: "Ekonom",
       ),
       DriverInfo(
         name: "Olim Olimov",
@@ -408,8 +418,22 @@ class _TaxiOrderScreenState extends State<TaxiOrderScreen>
         completedRides: 1563,
         phoneNumber: "+998901234569",
         licenseInfo: "AB9876543",
-        currentLocation: LatLng(40.798, 72.992),
+        currentLocation: LatLng(40.805, 72.995), // Xo'jaobod yo'nalishi
         eta: 7,
+        carType: "Komfort",
+      ),
+      DriverInfo(
+        name: "Bekzod Bekov",
+        carModel: "Matiz",
+        carColor: "Qizil",
+        carNumber: "01 D 321 DD",
+        rating: 4.2,
+        completedRides: 456,
+        phoneNumber: "+998901234570",
+        licenseInfo: "AB1122334",
+        currentLocation: LatLng(40.790, 72.970), // Baliqchi yo'nalishi
+        eta: 8,
+        carType: "Ekonom",
       ),
     ];
   }
@@ -786,10 +810,606 @@ class _TaxiOrderScreenState extends State<TaxiOrderScreen>
     _showAutoTaxiOptionsDialog();
   }
 
-  /// Haydovchilarni ko'rsatish funksiyasi
+  /// 3-USUL: YO'NALISH BO'YICHA HAYDOVCHILARNI KO'RSATISH
   void _showAvailableDrivers() {
-    if (!_isDriversButtonActive) return;
-    _showDriversListDialog();
+    if (!_isDriversButtonActive) {
+      _showErrorSnackbar("Iltimos, avval yo'nalishni tanlang");
+      return;
+    }
+    
+    // Yo'nalish bo'yicha haydovchilarni filtrlash
+    _filterDriversByDirection();
+  }
+
+  /// YO'NALISH BO'YICHA HAYDOVCHILARNI FILTRLASH
+  void _filterDriversByDirection() async {
+    if (_savedPickupLocation == null || _selectedDestination == null) {
+      _showErrorSnackbar("Iltimos, yo'nalishni tanlang");
+      return;
+    }
+
+    setState(() {
+      _isFilteringByDirection = true;
+      _isLoadingDrivers = true;
+      _currentDirectionFilter = _selectedDestinationAddress;
+    });
+
+    try {
+      // Simulyatsiya: 3 soniya kutish (server so'rovi)
+      await Future.delayed(const Duration(seconds: 3));
+
+      // Yo'nalish bo'yicha haydovchilarni filtrlash logikasi
+      List<DriverInfo> filteredDrivers = _simulateDirectionBasedFiltering();
+
+      setState(() {
+        _directionDrivers = filteredDrivers;
+        _isFilteringByDirection = false;
+        _isLoadingDrivers = false;
+      });
+
+      // Ro'yxatni ko'rsatish
+      _showDirectionDriversList();
+
+    } catch (e) {
+      setState(() {
+        _isFilteringByDirection = false;
+        _isLoadingDrivers = false;
+      });
+      _showErrorSnackbar("Haydovchilar filtrlashda xatolik");
+    }
+  }
+
+  /// YO'NALISH ASOSIDA HAYDOVCHILARNI FILTRLASH SIMULYATSIYASI
+  List<DriverInfo> _simulateDirectionBasedFiltering() {
+    // Haqiqiy loyihada bu server tomondan amalga oshiriladi
+    // Bu yerda sizning yo'nalishingizga mos haydovchilar qaytariladi
+    
+    String destination = _selectedDestinationAddress?.toLowerCase() ?? "";
+    
+    return _availableDrivers.where((driver) {
+      // Turli yo'nalishlar bo'yicha filtrlash logikasi
+      if (destination.contains("andijon") || destination.contains("markaz")) {
+        // Markaz yo'nalishidagi haydovchilar
+        return driver.currentLocation.latitude > 40.79 && 
+               driver.currentLocation.latitude < 40.81;
+      }
+      else if (destination.contains("shahrixon") || destination.contains("shaxrixon")) {
+        // Shahrixon yo'nalishidagi haydovchilar
+        return driver.currentLocation.longitude < 72.98;
+      }
+      else if (destination.contains("baliqchi") || destination.contains("balıqçı")) {
+        // Baliqchi yo'nalishidagi haydovchilar
+        return driver.currentLocation.latitude < 40.80;
+      }
+      else if (destination.contains("xo'jaobod") || destination.contains("xujaobod")) {
+        // Xo'jaobod yo'nalishidagi haydovchilar
+        return driver.currentLocation.longitude > 72.99;
+      }
+      else {
+        // Boshqa yo'nalishlar uchun - barcha haydovchilar
+        return true;
+      }
+    }).toList();
+  }
+
+  /// YO'NALISH BO'YICHA FILTRLANGAN HAYDOVCHILAR RO'YXATINI KO'RSATISH
+  void _showDirectionDriversList() {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (BuildContext context) {
+        return Container(
+          height: MediaQuery.of(context).size.height * 0.8,
+          decoration: const BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.vertical(top: Radius.circular(25)),
+          ),
+          child: Column(
+            children: [
+              // Header qismi
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Colors.blue.shade50,
+                  borderRadius: const BorderRadius.vertical(top: Radius.circular(25)),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(Icons.directions, color: Colors.blue),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text(
+                            "Yo'nalish bo'yicha haydovchilar",
+                            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                          ),
+                          Text(
+                            _currentDirectionFilter ?? "Yo'nalish tanlanmagan",
+                            style: const TextStyle(fontSize: 14, color: Colors.grey),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ],
+                      ),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.close),
+                      onPressed: () => Navigator.pop(context),
+                    ),
+                  ],
+                ),
+              ),
+
+              // Filtrlash ma'lumotlari
+              Container(
+                padding: const EdgeInsets.all(12),
+                color: Colors.green.shade50,
+                child: Row(
+                  children: [
+                    const Icon(Icons.filter_alt, color: Colors.green, size: 16),
+                    const SizedBox(width: 8),
+                    Text(
+                      "Filtr: ${_directionDrivers.length} ta haydovchi topildi",
+                      style: const TextStyle(color: Colors.green, fontWeight: FontWeight.bold),
+                    ),
+                    const Spacer(),
+                    IconButton(
+                      icon: const Icon(Icons.refresh, size: 20),
+                      onPressed: _refreshDirectionDrivers,
+                      tooltip: "Yangilash",
+                    ),
+                  ],
+                ),
+              ),
+
+              // Yuklanayotganda
+              if (_isLoadingDrivers)
+                Expanded(
+                  child: Center(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const CircularProgressIndicator(),
+                        const SizedBox(height: 16),
+                        const Text("Yo'nalish bo'yicha haydovchilar qidirilmoqda..."),
+                        const SizedBox(height: 8),
+                        Text(
+                          _currentDirectionFilter ?? "Yo'nalish",
+                          style: const TextStyle(color: Colors.grey, fontWeight: FontWeight.bold),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+
+              // Ro'yxat ko'rinishi
+              if (!_isLoadingDrivers)
+                Expanded(
+                  child: _directionDrivers.isEmpty
+                      ? _buildNoDriversFound()
+                      : ListView.builder(
+                          itemCount: _directionDrivers.length,
+                          itemBuilder: (context, index) {
+                            final driver = _directionDrivers[index];
+                            return _buildDirectionDriverCard(driver);
+                          },
+                        ),
+                ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  /// YO'NALISH BO'YICHA HAYDOVCHI KARTASI (OVERFLOW TUZATILGAN)
+Widget _buildDirectionDriverCard(DriverInfo driver) {
+  // Yo'nalishga mos kelish darajasini hisoblash
+  double matchPercentage = _calculateDirectionMatch(driver);
+  
+  return Card(
+    margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+    elevation: 3,
+    child: Padding(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        children: [
+          // Asosiy ma'lumotlar qatori - OVERFLOW TUZATILGAN
+          Row(
+            children: [
+              // Moslik indikatori
+              Container(
+                width: 60,
+                height: 60,
+                decoration: BoxDecoration(
+                  color: _getMatchColor(matchPercentage),
+                  shape: BoxShape.circle,
+                ),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text(
+                      "${matchPercentage.toInt()}%",
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const Text(
+                      "mos",
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 10,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              
+              const SizedBox(width: 12), // Kamaytirilgan joy
+              
+              // Haydovchi ma'lumotlari - OVERFLOW TUZATILGAN
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      driver.name,
+                      style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                      overflow: TextOverflow.ellipsis,
+                      maxLines: 1,
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      "${driver.carModel} • ${driver.carColor}",
+                      style: const TextStyle(fontSize: 14, color: Colors.grey),
+                      overflow: TextOverflow.ellipsis,
+                      maxLines: 1,
+                    ),
+                    const SizedBox(height: 4),
+                    Wrap(
+                      spacing: 8,
+                      children: [
+                        Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Icon(Icons.star, color: Colors.amber, size: 14),
+                            Text(" ${driver.rating}"),
+                          ],
+                        ),
+                        Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Icon(Icons.access_time, size: 14),
+                            Text(" ${driver.eta} daq"),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+              
+              const SizedBox(width: 8), // Qo'shimcha joy
+              
+              // Narx va tanlash tugmasi - OVERFLOW TUZATILGAN
+              SizedBox(
+                width: 100, // Fixed width
+                child: Column(
+                  children: [
+                    Text(
+                      "${_calculateDirectionPrice(driver, matchPercentage).toStringAsFixed(0)} so'm",
+                      style: const TextStyle(
+                        fontSize: 14, // Kichikroq font
+                        fontWeight: FontWeight.bold,
+                        color: Colors.blue,
+                      ),
+                      textAlign: TextAlign.center,
+                      overflow: TextOverflow.ellipsis,
+                      maxLines: 2,
+                    ),
+                    const SizedBox(height: 6),
+                    SizedBox(
+                      width: 80, // Fixed width tugma uchun
+                      height: 36, // Fixed height
+                      child: ElevatedButton(
+                        onPressed: () => _selectDirectionDriver(driver),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.green,
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                          textStyle: const TextStyle(fontSize: 12),
+                        ),
+                        child: const Text(
+                          "Tanlash",
+                          style: TextStyle(color: Colors.white),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          
+          // Qo'shimcha ma'lumotlar - OVERFLOW TUZATILGAN
+          const SizedBox(height: 12),
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.grey.shade50,
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceAround,
+                children: [
+                  _buildDirectionInfo(Icons.location_on, "Masofa: ${driver.eta} km"),
+                  const SizedBox(width: 16),
+                  _buildDirectionInfo(Icons.directions_car, driver.carNumber),
+                  const SizedBox(width: 16),
+                  _buildDirectionInfo(Icons.phone, _formatPhoneNumber(driver.phoneNumber)),
+                ],
+              ),
+            ),
+          ),
+          
+          // Yo'nalish mosligi tafsilotlari
+          const SizedBox(height: 8),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 8),
+            child: Text(
+              _getDirectionMatchDescription(matchPercentage),
+              style: TextStyle(
+                fontSize: 11, // Kichikroq font
+                color: _getMatchColor(matchPercentage),
+                fontStyle: FontStyle.italic,
+              ),
+              textAlign: TextAlign.center,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+        ],
+      ),
+    ),
+  );
+}
+
+/// Telefon raqamini formatlash
+String _formatPhoneNumber(String phone) {
+  if (phone.length >= 9) {
+    return "${phone.substring(0, 4)}...${phone.substring(phone.length - 2)}";
+  }
+  return phone;
+}
+  /// YO'NALISH MOSLIGINI HISOBLASH
+  double _calculateDirectionMatch(DriverInfo driver) {
+    // Haqiqiy loyihada bu murakkab geolokatsiya hisob-kitoblari bo'ladi
+    // Bu yerda soddalashtirilgan versiya
+    
+    double baseMatch = 70.0; // Asosiy moslik
+    double ratingBonus = (driver.rating - 4.0) * 10; // Reyting bonus
+    double distanceBonus = (10 - driver.eta) * 2; // Masofa bonus
+    double experienceBonus = (driver.completedRides / 1000) * 5; // Tajriba bonus
+    
+    double totalMatch = baseMatch + ratingBonus + distanceBonus + experienceBonus;
+    
+    return totalMatch.clamp(0.0, 100.0);
+  }
+
+  /// YO'NALISH BO'YICHA NARX HISOBLASH
+  double _calculateDirectionPrice(DriverInfo driver, double matchPercentage) {
+    double basePrice = 10000.0;
+    double matchDiscount = (100 - matchPercentage) / 100 * 0.2; // 20% gacha chegirma
+    double ratingMultiplier = driver.rating / 5.0;
+    
+    return basePrice * ratingMultiplier * (1 - matchDiscount);
+  }
+
+  /// MOSLIK RANGINI ANIQLASH
+  Color _getMatchColor(double percentage) {
+    if (percentage >= 80) return Colors.green;
+    if (percentage >= 60) return Colors.blue;
+    if (percentage >= 40) return Colors.orange;
+    return Colors.red;
+  }
+
+  /// MOSLIK TAVSIFINI OLISH
+  String _getDirectionMatchDescription(double percentage) {
+    if (percentage >= 80) return "✅ A'lo moslik - bu haydovchi sizning yo'nalishingizga juda mos keladi";
+    if (percentage >= 60) return "👍 Yaxshi moslik - haydovchi yo'nalishingizga mos keladi";
+    if (percentage >= 40) return "⚠️ O'rtacha moslik - haydovchi yo'nalishingizga qisman mos keladi";
+    return "❌ Past moslik - boshqa haydovchi tanlash tavsiya etiladi";
+  }
+
+  /// YO'NALISH MA'LUMOTLARI ELEMENTI
+  Widget _buildDirectionInfo(IconData icon, String text) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(icon, size: 14, color: Colors.grey),
+        const SizedBox(width: 4),
+        Text(text, style: const TextStyle(fontSize: 12)),
+      ],
+    );
+  }
+
+  /// HECH QANDAY HAYDOVCHI TOPILMAGANDA KO'RSATILADIGAN WIDGET
+  Widget _buildNoDriversFound() {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(32),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(Icons.directions_car_outlined, size: 64, color: Colors.grey),
+            const SizedBox(height: 16),
+            const Text(
+              "Hech qanday haydovchi topilmadi",
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 8),
+            Text(
+              "Yo'nalish: ${_currentDirectionFilter ?? 'Tanlanmagan'}",
+              style: const TextStyle(color: Colors.grey),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 16),
+            const Text(
+              "Quyidagi variantlardan birini tanlang:",
+              style: TextStyle(fontSize: 14),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 16),
+            Column(
+              children: [
+                ElevatedButton(
+                  onPressed: _refreshDirectionDrivers,
+                  child: const Text("Qayta qidirish"),
+                ),
+                const SizedBox(height: 8),
+                OutlinedButton(
+                  onPressed: () {
+                    Navigator.pop(context);
+                    _showAllDriversList(); // Barcha haydovchilarni ko'rsatish
+                  },
+                  child: const Text("Barcha haydovchilarni ko'rsatish"),
+                ),
+                const SizedBox(height: 8),
+                TextButton(
+                  onPressed: () {
+                    Navigator.pop(context);
+                    _orderAutoTaxi(); // Avtomatik taksi ga o'tish
+                  },
+                  child: const Text("Avtomatik taksi tanlash"),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// BARCHA HAYDOVCHILARNI KO'RSATISH
+  void _showAllDriversList() {
+    setState(() {
+      _directionDrivers = _availableDrivers;
+    });
+    _showDirectionDriversList();
+  }
+
+  /// HAYDOVCHILAR RO'YXATINI YANGILASH
+  void _refreshDirectionDrivers() {
+    setState(() {
+      _isLoadingDrivers = true;
+    });
+    
+    // Qisqa kutish va yangilash
+    Future.delayed(const Duration(seconds: 2), () {
+      _filterDriversByDirection();
+    });
+  }
+
+  /// YO'NALISH BO'YICHA TANLANGAN HAYDOVCHINI QAYTA ISHLASH
+  void _selectDirectionDriver(DriverInfo driver) {
+    Navigator.pop(context); // Dialogni yopish
+    
+    setState(() {
+      _isWaitingForDriver = true;
+    });
+
+    // Tanlangan haydovchiga xabar jo'natish
+    _showDriverConfirmationDialog(driver);
+  }
+
+  /// HAYDOVCHI TASDIQLASH DIALOGI
+  void _showDriverConfirmationDialog(DriverInfo driver) {
+    double matchPercentage = _calculateDirectionMatch(driver);
+    double price = _calculateDirectionPrice(driver, matchPercentage);
+    
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text("Haydovchini tasdiqlash"),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              ListTile(
+                leading: CircleAvatar(
+                  backgroundColor: _getMatchColor(matchPercentage),
+                  child: Text(
+                    "${matchPercentage.toInt()}%",
+                    style: const TextStyle(color: Colors.white, fontSize: 12),
+                  ),
+                ),
+                title: Text(driver.name),
+                subtitle: Text("${driver.carModel} • ${driver.carNumber}"),
+              ),
+              const SizedBox(height: 16),
+              Text(
+                "Narx: ${price.toStringAsFixed(0)} so'm",
+                style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.blue),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                "Yo'nalish: ${_currentDirectionFilter ?? 'Tanlanmagan'}",
+                style: const TextStyle(color: Colors.grey),
+                textAlign: TextAlign.center,
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text("Bekor qilish"),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                Navigator.pop(context);
+                _sendMessageToSelectedDriver(driver);
+              },
+              style: ElevatedButton.styleFrom(backgroundColor: Colors.green),
+              child: const Text("Tasdiqlash"),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  /// Tanlangan haydovchiga xabar jo'natish
+  void _sendMessageToSelectedDriver(DriverInfo driver) {
+    setState(() {
+      _isSendingSignal = true;
+      _isWaitingForDriver = false;
+      _isDriverAccepted = false;
+    });
+
+    _signalTimer = Timer(const Duration(seconds: 2), () {
+      setState(() {
+        _isSendingSignal = false;
+        _isWaitingForDriver = true;
+      });
+
+      _driverResponseTimer = Timer(const Duration(seconds: 3), () {
+        setState(() {
+          _isWaitingForDriver = false;
+          _isDriverAccepted = true;
+          _selectedDriver = driver;
+        });
+
+        _addDriverMarker();
+        _startService();
+        });
+    });
   }
 
   /// Kengaytirilgan signal parametrlari dialogi
@@ -1224,7 +1844,7 @@ class _TaxiOrderScreenState extends State<TaxiOrderScreen>
     );
   }
 
-  /// AVTOMATIK TAKSI QIDIRUVINI BOSHLASH - YANGI VERSIYA
+  /// AVTOMATIK TAKSI QIDIRUVINI BOSHLASH
   void _startAutoTaxiSearch() {
     setState(() {
       _isAutoTaxiSearching = true;
@@ -1248,7 +1868,7 @@ class _TaxiOrderScreenState extends State<TaxiOrderScreen>
     });
   }
 
-  /// AVTOMATIK TAKSI HAYDOVCHISINI QIDIRISH - YANGI VERSIYA
+  /// AVTOMATIK TAKSI HAYDOVCHISINI QIDIRISH
   void _findAutoTaxiDriver() {
     setState(() {
       _isAutoTaxiSearching = false;
@@ -1274,7 +1894,7 @@ class _TaxiOrderScreenState extends State<TaxiOrderScreen>
   void _sendAutoTaxiRequestToDriver() {
     setState(() {
       _isAutoTaxiSearching = false;
-      _isWaitingForDriver = true; // Signal jo'natishdagi kabi
+      _isWaitingForDriver = true;
     });
 
     // 5 soniya davomida haydovchidan javob kutilmoqda
@@ -1312,7 +1932,7 @@ class _TaxiOrderScreenState extends State<TaxiOrderScreen>
       setState(() {
         _isWaitingForDriver = false;
       });
-      _startAutoTaxiDriverSearchAnimation(); // Qayta qidirish
+      _startAutoTaxiDriverSearchAnimation();
     }
   }
 
@@ -1344,135 +1964,6 @@ class _TaxiOrderScreenState extends State<TaxiOrderScreen>
         timer.cancel();
       }
     });
-  }
-
-  /// Haydovchilar ro'yxatini ko'rsatish dialogi
-  void _showDriversListDialog() {
-    List<Map<String, dynamic>> demoDrivers = [
-      {
-        'name': 'Ali Valiyev',
-        'car': 'Cobalt',
-        'color': 'Oq',
-        'number': '01 A 123 AA',
-        'rating': 4.8,
-        'distance': '1.2 km',
-        'price': '15,000 so\'m'
-      },
-      {
-        'name': 'Hasan Hasanov',
-        'car': 'Nexia',
-        'color': 'Qora',
-        'number': '01 B 456 BB',
-        'rating': 4.5,
-        'distance': '0.8 km',
-        'price': '14,000 so\'m'
-      },
-      {
-        'name': 'Olim Olimov',
-        'car': 'Gentra',
-        'color': 'Kumush',
-        'number': '01 C 789 CC',
-        'rating': 4.9,
-        'distance': '2.1 km',
-        'price': '16,000 so\'m'
-      }
-    ];
-
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          title: const Text("Mavjud haydovchilar"),
-          content: SizedBox(
-            width: double.maxFinite,
-            child: ListView.builder(
-              shrinkWrap: true,
-              itemCount: demoDrivers.length,
-              itemBuilder: (context, index) {
-                final driver = demoDrivers[index];
-                return ListTile(
-                  leading: const Icon(Icons.person, size: 40),
-                  title: Text(driver['name']),
-                  subtitle: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text("${driver['car']} • ${driver['color']} • ${driver['number']}"),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.start,
-                        children: [
-                          const Icon(Icons.star, color: Colors.amber, size: 16),
-                          Text(" ${driver['rating']}"),
-                          const SizedBox(width: 10),
-                          const Icon(Icons.directions_car, size: 16),
-                          Text(" ${driver['distance']}"),
-                        ],
-                      ),
-                      Text("${driver['price']}", style: const TextStyle(fontWeight: FontWeight.bold)),
-                    ],
-                  ),
-                  trailing: ElevatedButton(
-                    onPressed: () {
-                      Navigator.pop(context);
-                      _selectDriver(driver);
-                    },
-                    child: const Text("Tanlash"),
-                  ),
-                );
-              },
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text("Bekor qilish"),
-            ),
-          ],
-        );
-      },
-    );
-  }
-
-  /// Haydovchini tanlash funksiyasi
-  void _selectDriver(Map<String, dynamic> driver) {
-    _startSearchAnimation();
-  }
-
-  /// Qidiruv animatsiyasini boshlash
-  void _startSearchAnimation() {
-    setState(() {
-      _isSearching = true;
-      _foundTaxisCount = 0;
-      _showSignalButton = false;
-    });
-
-    _searchAnimationTimer = Timer.periodic(const Duration(milliseconds: 800), (timer) {
-      if (_searchZoomLevel > 12.0) {
-        setState(() {
-          _searchZoomLevel -= 0.3;
-          _foundTaxisCount += 1;
-        });
-        _animateCameraZoom(_searchZoomLevel);
-      } else {
-        timer.cancel();
-        setState(() {
-          _isSearching = false;
-          _showSignalButton = true;
-        });
-      }
-    });
-  }
-
-  /// Qidiruvni bekor qilish
-  void _cancelSearch() {
-    _searchAnimationTimer?.cancel();
-    setState(() {
-      _isSearching = false;
-      _searchZoomLevel = 17.0;
-      _foundTaxisCount = 0;
-      _showSignalButton = false;
-      _showAutoTaxiButton = false;
-    });
-    _goToCurrentLocation();
   }
 
   /// Haydovchi markerini qo'shish
@@ -1556,7 +2047,8 @@ class _TaxiOrderScreenState extends State<TaxiOrderScreen>
 
   /// Haydovchiga qo'ng'iroq qilish funksiyasi
   void _callDriver() {
-    String phoneNumber = _isAutoTaxiStarted ? _autoTaxiDriver!['phone'] : "+998901234567";
+    String phoneNumber = _isAutoTaxiStarted ? _autoTaxiDriver!['phone'] : 
+                        _selectedDriver != null ? _selectedDriver!.phoneNumber : "+998901234567";
     _showErrorSnackbar("Haydovchiga qo'ng'iroq qilinmoqda: $phoneNumber");
   }
 
@@ -1660,6 +2152,19 @@ class _TaxiOrderScreenState extends State<TaxiOrderScreen>
         );
       },
     );
+  }
+
+  /// Qidiruvni bekor qilish
+  void _cancelSearch() {
+    _searchAnimationTimer?.cancel();
+    setState(() {
+      _isSearching = false;
+      _searchZoomLevel = 17.0;
+      _foundTaxisCount = 0;
+      _showSignalButton = false;
+      _showAutoTaxiButton = false;
+    });
+    _goToCurrentLocation();
   }
 
   /// Tafsilotlar elementi qurish
@@ -1895,6 +2400,35 @@ class _TaxiOrderScreenState extends State<TaxiOrderScreen>
               ),
             ),
 
+          // 3-USUL: YO'NALISH BO'YICHA HAYDOVCHILAR YUKLANAYOTGANDA
+          if (_isLoadingDrivers && _isFilteringByDirection)
+            Positioned(
+              top: 25,
+              left: MediaQuery.of(context).size.width / 2 - 120,
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(20),
+                  boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 4, offset: Offset(0, 2))],
+                ),
+                child: Row(
+                  children: [
+                    const SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    ),
+                    const SizedBox(width: 8),
+                    const Text(
+                      "Haydovchilar qidirilmoqda...",
+                      style: TextStyle(color: Colors.blue, fontWeight: FontWeight.bold),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+
           // PASTKI PANEL (Bottom Bar)
           Align(
             alignment: Alignment.bottomCenter,
@@ -1921,7 +2455,33 @@ class _TaxiOrderScreenState extends State<TaxiOrderScreen>
                   ),
                   const SizedBox(height: 20),
                   
-                  // AVTOMATIK TAKSI HOLATLARI - SIGNALGA O'XSHASH KONTEYNERLAR
+                  // 3-USUL: YO'NALISH BO'YICHA HAYDOVCHILAR YUKLANAYOTGANDA
+                  if (_isLoadingDrivers && _isFilteringByDirection)
+                  Container(
+                    width: double.infinity,
+                    margin: const EdgeInsets.only(bottom: 10),
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(15),
+                      boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 4, offset: Offset(0, 2))],
+                    ),
+                    child: Column(
+                      children: [
+                        const CircularProgressIndicator(),
+                        const SizedBox(height: 10),
+                        const Text("Yo'nalish bo'yicha haydovchilar qidirilmoqda...", style: TextStyle(fontSize: 16)),
+                        const SizedBox(height: 5),
+                        Text(
+                          "Yo'nalish: ${_currentDirectionFilter ?? 'Aniqlanmoqda'}",
+                          style: const TextStyle(color: Colors.grey, fontSize: 14),
+                          textAlign: TextAlign.center,
+                        ),
+                      ],
+                    ),
+                  ),
+
+                  // AVTOMATIK TAKSI HOLATLARI
                   if (_isAutoTaxiSearching)
                   Container(
                     width: double.infinity,
@@ -1943,7 +2503,7 @@ class _TaxiOrderScreenState extends State<TaxiOrderScreen>
                     ),
                   ),
                   
-                  // Haydovchidan javob kutilayotganida (signal jo'natishdagi bilan bir xil)
+                  // Haydovchidan javob kutilayotganida
                   if (_isWaitingForDriver && _isAutoTaxiStarted)
                   Container(
                     width: double.infinity,
@@ -1970,7 +2530,7 @@ class _TaxiOrderScreenState extends State<TaxiOrderScreen>
                     ),
                   ),
 
-                  // Haydovchi yo'lda (signal jo'natishdagi bilan bir xil konteyner)
+                  // Haydovchi yo'lda
                   if (_isDriverAccepted && _isAutoTaxiStarted && !_isServiceStarted)
                   Container(
                     width: double.infinity,
@@ -2031,7 +2591,7 @@ class _TaxiOrderScreenState extends State<TaxiOrderScreen>
                     ),
                   ),
 
-                  // Safarda (signal jo'natishdagi bilan bir xil konteyner)
+                  // Safarda
                   if (_isServiceStarted && _isAutoTaxiStarted)
                   Container(
                     width: double.infinity,
