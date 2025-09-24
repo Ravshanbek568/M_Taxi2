@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:m_taksi/core/theme/colors.dart'; // Loyiha ranglari uchun kutubxona
-import 'package:m_taksi/views/auth/entrepreneur/entrepreneur_phone_screen.dart'; // Tadbirkor telefon raqami sahifasi
+import 'package:m_taksi/views/auth/entrepreneur/entrepreneur_home_scren.dart';
+// import 'package:m_taksi/views/auth/entrepreneur/entrepreneur_phone_screen.dart'; // Tadbirkor telefon raqami sahifasi
 
 /// Tadbirkorlik turini tanlash sahifasi
 class EntrepreneurBusinessTypeScreen extends StatelessWidget {
@@ -106,7 +107,7 @@ class EntrepreneurBusinessTypeScreen extends StatelessWidget {
                                   Navigator.push(
                                     context,
                                     MaterialPageRoute(
-                                      builder: (context) => const EntrepreneurPhoneScreen(),
+                                      builder: (context) => const EntrepreneurHomeScreen(),
                                     ),
                                   );
                                 }
