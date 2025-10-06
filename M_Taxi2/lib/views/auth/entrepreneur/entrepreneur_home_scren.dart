@@ -35,6 +35,9 @@ class _EntrepreneurHomeScreenState extends State<EntrepreneurHomeScreen> {
   // 🔹 Yangi xabarlar soni
   int _unreadMessagesCount = 3;
 
+  // 🔹 Yangi buyurtmalar soni
+  int _newOrdersCount = 2;
+
   // 🔹 Tanlangan mijoz
   Map<String, dynamic>? _selectedCustomer;
 
@@ -45,6 +48,16 @@ class _EntrepreneurHomeScreenState extends State<EntrepreneurHomeScreen> {
   // 🔹 FocusNode lar
   final FocusNode _adminFocusNode = FocusNode();
   final FocusNode _customerFocusNode = FocusNode();
+
+  // 🔹 ScrollController lar
+  final ScrollController _adminScrollController = ScrollController();
+  final ScrollController _customerScrollController = ScrollController();
+
+  // 🔹 Vaqt oralig'i filtrlari
+  String _currentFilter = "month";
+
+  // 🔹 Buyurtmalar filtri
+  String _orderFilter = "all";
 
   // 🔹 Admin bilan yozishma
   final List<Map<String, dynamic>> _adminMessages = [
@@ -92,7 +105,7 @@ class _EntrepreneurHomeScreenState extends State<EntrepreneurHomeScreen> {
       "time": "Yesterday",
       "unread": 0,
       "orderId": "#RCX-003", 
-      "orderActive": false, // Buyurtma aktiv emas
+      "orderActive": false,
     },
   ];
 
@@ -134,7 +147,7 @@ class _EntrepreneurHomeScreenState extends State<EntrepreneurHomeScreen> {
     ],
   };
 
-  // 🔹 Statistika ma'lumotlari
+  // 🔹 Yangilangan statistika ma'lumotlari
   final Map<String, dynamic> _stats = {
     "monthly_orders": 156,
     "total_distance": 2450,
@@ -142,9 +155,18 @@ class _EntrepreneurHomeScreenState extends State<EntrepreneurHomeScreen> {
     "rating": 4.8,
     "completed_trips": 142,
     "canceled_trips": 14,
+    "orders_change": "+12%",
+    "distance_change": "+8%", 
+    "earnings_change": "+15%",
+    "reviews_count": 142,
+    "working_hours": 8,
+    "avg_earnings": 58000,
+    "customers_count": 45,
+    "online_hours": 180,
+    "acceptance_rate": 92,
   };
 
-  // 🔹 RconneX buyurtmalari ro'yxati
+  // 🔹 RconneX buyurtmalari ro'yxati - YANGILANGAN
   final List<Map<String, dynamic>> _rconnexOrders = [
     {
       "id": "#RCX-001",
@@ -155,6 +177,8 @@ class _EntrepreneurHomeScreenState extends State<EntrepreneurHomeScreen> {
       "price": "25,000 so'm",
       "time": "15 min",
       "status": "waiting",
+      "type": "new", // yangi
+      "createdAt": DateTime.now().subtract(const Duration(minutes: 5)),
     },
     {
       "id": "#RCX-002",
@@ -165,6 +189,44 @@ class _EntrepreneurHomeScreenState extends State<EntrepreneurHomeScreen> {
       "price": "18,000 so'm",
       "time": "10 min",
       "status": "waiting",
+      "type": "new", // yangi
+      "createdAt": DateTime.now().subtract(const Duration(minutes: 10)),
+    },
+    {
+      "id": "#RCX-003",
+      "customer": "Ali Valiyev",
+      "from": "Qo'rg'ontepa",
+      "to": "Andijon markazi",
+      "distance": "15.3 km",
+      "price": "30,000 so'm",
+      "time": "20 min",
+      "status": "active",
+      "type": "active", // faol
+      "createdAt": DateTime.now().subtract(const Duration(hours: 2)),
+    },
+    {
+      "id": "#RCX-004",
+      "customer": "Olimjon Sobirov",
+      "from": "Bozor",
+      "to": "Asaka yo'li",
+      "distance": "7.8 km",
+      "price": "16,000 so'm",
+      "time": "12 min",
+      "status": "completed",
+      "type": "completed", // yakunlangan
+      "createdAt": DateTime.now().subtract(const Duration(days: 1)),
+    },
+    {
+      "id": "#RCX-005",
+      "customer": "Javohir Rasulov",
+      "from": "Xonobod",
+      "to": "Qo'rg'ontepa",
+      "distance": "18.1 km",
+      "price": "35,000 so'm",
+      "time": "25 min",
+      "status": "rejected",
+      "type": "rejected", // rad etilgan
+      "createdAt": DateTime.now().subtract(const Duration(days: 2)),
     },
   ];
 
@@ -229,7 +291,6 @@ class _EntrepreneurHomeScreenState extends State<EntrepreneurHomeScreen> {
   // 🔹 Xarita yaratilganda chaqiriladigan funksiya
   void _onMapCreated(GoogleMapController controller) {
     setState(() {
-      // 🔹 Marker qo'shish - haydovchining joylashuvi
       _markers.add(
         Marker(
           markerId: const MarkerId("entrepreneur_location"),
@@ -247,9 +308,15 @@ class _EntrepreneurHomeScreenState extends State<EntrepreneurHomeScreen> {
   @override
   void initState() {
     super.initState();
-    // 🔹 Klaviatura ochilishi va yopilishini kuzatish
     _adminFocusNode.addListener(_onKeyboardChanged);
     _customerFocusNode.addListener(_onKeyboardChanged);
+    
+    // 🔹 ScrollController larni tinglash
+    _adminScrollController.addListener(_scrollListener);
+    _customerScrollController.addListener(_scrollListener);
+
+    // 🔹 Yangi buyurtmalar sonini hisoblash
+    _updateNewOrdersCount();
   }
 
   @override
@@ -258,28 +325,562 @@ class _EntrepreneurHomeScreenState extends State<EntrepreneurHomeScreen> {
     _customerMessageController.dispose();
     _adminFocusNode.dispose();
     _customerFocusNode.dispose();
+    _adminScrollController.dispose();
+    _customerScrollController.dispose();
     super.dispose();
   }
 
   void _onKeyboardChanged() {
-    // 🔹 Klaviatura holati o'zgarganda rebuild qilish
     if (mounted) {
       setState(() {});
     }
   }
 
-  // ========== YANGI XABARLAR KONTEYNERI ==========
+  void _scrollListener() {
+    // 🔹 Scroll qilinganda klaviatura yopilishi
+    if (_adminFocusNode.hasFocus) {
+      _adminFocusNode.unfocus();
+    }
+    if (_customerFocusNode.hasFocus) {
+      _customerFocusNode.unfocus();
+    }
+  }
 
-  // 🔹 Xabarlar konteyneri
+  // 🔹 Xabar yuborilganda pastga skroll qilish
+  void _scrollToBottom() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _adminScrollController.animateTo(
+        _adminScrollController.position.maxScrollExtent,
+        duration: const Duration(milliseconds: 300),
+        curve: Curves.easeOut,
+      );
+      _customerScrollController.animateTo(
+        _customerScrollController.position.maxScrollExtent,
+        duration: const Duration(milliseconds: 300),
+        curve: Curves.easeOut,
+      );
+    });
+  }
+
+  // 🔹 Yangi buyurtmalar sonini yangilash
+  void _updateNewOrdersCount() {
+    int count = _rconnexOrders.where((order) => order["type"] == "new").length;
+    setState(() {
+      _newOrdersCount = count;
+    });
+  }
+
+  // 🔹 Buyurtma qabul qilish
+  void _acceptOrder(String orderId) {
+    setState(() {
+      var order = _rconnexOrders.firstWhere((order) => order["id"] == orderId);
+      order["type"] = "active";
+      order["status"] = "active";
+      _updateNewOrdersCount();
+    });
+    
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text("$orderId buyurtmasi qabul qilindi"),
+        backgroundColor: Colors.green,
+      ),
+    );
+  }
+
+  // 🔹 Buyurtmani rad etish
+  void _rejectOrder(String orderId) {
+    setState(() {
+      var order = _rconnexOrders.firstWhere((order) => order["id"] == orderId);
+      order["type"] = "rejected";
+      order["status"] = "rejected";
+      _updateNewOrdersCount();
+    });
+    
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text("$orderId buyurtmasi rad etildi"),
+        backgroundColor: Colors.red,
+      ),
+    );
+  }
+
+  // 🔹 Buyurtmani yakunlash
+  void _completeOrder(String orderId) {
+    setState(() {
+      var order = _rconnexOrders.firstWhere((order) => order["id"] == orderId);
+      order["type"] = "completed";
+      order["status"] = "completed";
+    });
+    
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text("$orderId buyurtmasi yakunlandi"),
+        backgroundColor: Colors.blue,
+      ),
+    );
+  }
+
+  // ========== YANGILANGAN BUYURTMALAR KONTEYNERI ==========
+
+  Widget _buildOrdersContainer() {
+    return Column(
+      children: [
+        Container(
+          padding: const EdgeInsets.all(16),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Text(
+                "Buyurtmalar",
+                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+              ),
+              IconButton(
+                icon: const Icon(Icons.close, size: 24),
+                onPressed: () {
+                  setState(() {
+                    _activeBottomContainer = "";
+                  });
+                },
+              ),
+            ],
+          ),
+        ),
+        const Divider(height: 1),
+        
+        // 🔹 Filtr tugmalari
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          child: SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: Row(
+              children: [
+                _buildOrderFilterChip("Barchasi", "all"),
+                const SizedBox(width: 8),
+                _buildOrderFilterChip("Yangi", "new"),
+                const SizedBox(width: 8),
+                _buildOrderFilterChip("Faol", "active"),
+                const SizedBox(width: 8),
+                _buildOrderFilterChip("Yakunlangan", "completed"),
+                const SizedBox(width: 8),
+                _buildOrderFilterChip("Rad etilgan", "rejected"),
+              ],
+            ),
+          ),
+        ),
+        
+        const Divider(height: 1),
+        Expanded(
+          child: _mode == "RconneX Taxi"
+              ? _buildRconnexOrdersList()
+              : _buildLocalTaxiOrders(),
+        ),
+      ],
+    );
+  }
+
+  // 🔹 Buyurtma filtri chipi
+  Widget _buildOrderFilterChip(String label, String value) {
+    final isSelected = _orderFilter == value;
+    final hasNewOrders = value == "new" && _newOrdersCount > 0;
+    
+    return FilterChip(
+      label: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(label),
+          if (hasNewOrders) ...[
+            const SizedBox(width: 4),
+            Container(
+              padding: const EdgeInsets.all(4),
+              decoration: const BoxDecoration(
+                color: Colors.orange,
+                shape: BoxShape.circle,
+              ),
+              child: Text(
+                _newOrdersCount > 9 ? "9+" : _newOrdersCount.toString(),
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 10,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+          ],
+        ],
+      ),
+      selected: isSelected,
+      onSelected: (bool selected) {
+        setState(() {
+          _orderFilter = value;
+        });
+      },
+      backgroundColor: Colors.grey.shade100,
+      selectedColor: Colors.blue.shade100,
+      checkmarkColor: Colors.blue.shade600,
+      labelStyle: TextStyle(
+        color: isSelected ? Colors.blue.shade600 : Colors.grey.shade700,
+        fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+      ),
+    );
+  }
+
+  // 🔹 RconneX buyurtmalari ro'yxati
+  Widget _buildRconnexOrdersList() {
+    List<Map<String, dynamic>> filteredOrders = _rconnexOrders;
+    
+    if (_orderFilter != "all") {
+      filteredOrders = _rconnexOrders.where((order) => order["type"] == _orderFilter).toList();
+    }
+    
+    // 🔹 Vaqt bo'yicha tartiblash (yangi buyurtmalar birinchi)
+    filteredOrders.sort((a, b) => b["createdAt"].compareTo(a["createdAt"]));
+
+    return filteredOrders.isEmpty
+        ? _buildEmptyOrdersState()
+        : ListView.builder(
+            padding: const EdgeInsets.all(16),
+            itemCount: filteredOrders.length,
+            itemBuilder: (context, index) {
+              return _buildEnhancedOrderCard(filteredOrders[index]);
+            },
+          );
+  }
+
+  // 🔹 Bo'sh buyurtmalar holati
+  Widget _buildEmptyOrdersState() {
+    String message = "";
+    IconData icon = Icons.list_alt;
+    
+    switch (_orderFilter) {
+      case "new":
+        message = "Hozircha yangi buyurtmalar yo'q";
+        icon = Icons.new_releases_outlined;
+        break;
+      case "active":
+        message = "Hozircha faol buyurtmalar yo'q";
+        icon = Icons.directions_car_outlined;
+        break;
+      case "completed":
+        message = "Hozircha yakunlangan buyurtmalar yo'q";
+        icon = Icons.check_circle_outline;
+        break;
+      case "rejected":
+        message = "Hozircha rad etilgan buyurtmalar yo'q";
+        icon = Icons.cancel_outlined;
+        break;
+      default:
+        message = "Hozircha buyurtmalar yo'q";
+    }
+    
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(icon, size: 64, color: Colors.grey.shade400),
+          const SizedBox(height: 16),
+          Text(
+            message,
+            style: TextStyle(
+              fontSize: 16,
+              color: Colors.grey.shade600,
+            ),
+            textAlign: TextAlign.center,
+          ),
+        ],
+      ),
+    );
+  }
+
+  // 🔹 Takomillashtirilgan buyurtma kartasi
+  Widget _buildEnhancedOrderCard(Map<String, dynamic> order) {
+    Color statusColor = Colors.grey;
+    Color cardColor = Colors.white;
+    String statusText = "";
+    
+    switch (order["type"]) {
+      case "new":
+        statusColor = Colors.orange;
+        cardColor = Colors.orange.shade50;
+        statusText = "YANGI";
+        break;
+      case "active":
+        statusColor = Colors.blue;
+        cardColor = Colors.blue.shade50;
+        statusText = "FAOL";
+        break;
+      case "completed":
+        statusColor = Colors.green;
+        cardColor = Colors.green.shade50;
+        statusText = "YAKUNLANGAN";
+        break;
+      case "rejected":
+        statusColor = Colors.red;
+        cardColor = Colors.red.shade50;
+        statusText = "RAD ETILGAN";
+        break;
+    }
+
+    // 🔹 Vaqt formati
+    String timeAgo = _getTimeAgo(order["createdAt"]);
+
+    return Card(
+      margin: const EdgeInsets.symmetric(vertical: 6),
+      elevation: 2,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      color: cardColor,
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // 🔹 Sarlavha qismi
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  order["id"],
+                  style: const TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 16,
+                    color: Colors.blue,
+                  ),
+                ),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: statusColor.withValues(alpha: 0.1),
+
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: statusColor.withValues(alpha: 0.3)),
+
+                  ),
+                  child: Text(
+                    statusText,
+                    style: TextStyle(
+                      color: statusColor,
+                      fontSize: 12,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            
+            const SizedBox(height: 8),
+            
+            // 🔹 Mijoz ma'lumotlari
+            Row(
+              children: [
+                Icon(Icons.person, color: Colors.grey.shade600, size: 16),
+                const SizedBox(width: 6),
+                Text(
+                  order["customer"],
+                  style: const TextStyle(fontWeight: FontWeight.w600),
+                ),
+              ],
+            ),
+            
+            const SizedBox(height: 8),
+            
+            // 🔹 Manzil ma'lumotlari
+            _buildLocationRow("📍 Dan:", order["from"], Colors.green),
+            _buildLocationRow("🎯 Gacha:", order["to"], Colors.red),
+            
+            const SizedBox(height: 12),
+            
+            // 🔹 Statistika qatori
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                _buildOrderStat("Masofa", order["distance"], Icons.directions_car),
+                _buildOrderStat("Vaqt", order["time"], Icons.access_time),
+                _buildOrderStat("Narx", order["price"], Icons.attach_money),
+              ],
+            ),
+            
+            const SizedBox(height: 12),
+            
+            // 🔹 Vaqt va amallar qatori
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  timeAgo,
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: Colors.grey.shade600,
+                    fontStyle: FontStyle.italic,
+                  ),
+                ),
+                
+                // 🔹 Harakat tugmalari
+                if (order["type"] == "new") 
+                  _buildActionButtons(order["id"], true, false)
+                else if (order["type"] == "active")
+                  _buildActionButtons(order["id"], false, true)
+                else
+                  _buildActionButtons(order["id"], false, false),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // 🔹 Manzil qatori
+  Widget _buildLocationRow(String prefix, String location, Color color) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 2),
+      child: Row(
+        children: [
+          Text(
+            prefix,
+            style: TextStyle(
+              fontSize: 12,
+              color: Colors.grey.shade600,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+          const SizedBox(width: 6),
+          Expanded(
+            child: Text(
+              location,
+              style: TextStyle(
+                fontSize: 13,
+                color: color,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // 🔹 Buyurtma statistikasi
+  Widget _buildOrderStat(String label, String value, IconData icon) {
+    return Column(
+      children: [
+        Icon(icon, size: 16, color: Colors.grey.shade600),
+        const SizedBox(height: 4),
+        Text(
+          value,
+          style: const TextStyle(
+            fontSize: 12,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        Text(
+          label,
+          style: TextStyle(
+            fontSize: 10,
+            color: Colors.grey.shade600,
+          ),
+        ),
+      ],
+    );
+  }
+
+  // 🔹 Harakat tugmalari
+  Widget _buildActionButtons(String orderId, bool isNew, bool isActive) {
+    if (isNew) {
+      return Row(
+        children: [
+          ElevatedButton(
+            onPressed: () => _acceptOrder(orderId),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.green,
+              foregroundColor: Colors.white,
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            ),
+            child: const Text("Qabul qilish"),
+          ),
+          const SizedBox(width: 8),
+          OutlinedButton(
+            onPressed: () => _rejectOrder(orderId),
+            style: OutlinedButton.styleFrom(
+              foregroundColor: Colors.red,
+              side: const BorderSide(color: Colors.red),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            ),
+            child: const Text("Rad etish"),
+          ),
+        ],
+      );
+    } else if (isActive) {
+      return ElevatedButton(
+        onPressed: () => _completeOrder(orderId),
+        style: ElevatedButton.styleFrom(
+          backgroundColor: Colors.blue,
+          foregroundColor: Colors.white,
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        ),
+        child: const Text("Yakunlash"),
+      );
+    } else {
+      return const SizedBox.shrink();
+    }
+  }
+
+  // 🔹 Mahalliy taxi buyurtmalari
+  Widget _buildLocalTaxiOrders() {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(
+            Icons.local_taxi,
+            size: 64,
+            color: Colors.grey.shade400,
+          ),
+          const SizedBox(height: 16),
+          const Text(
+            "Mahalliy Taxi rejimi faol",
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            "Buyurtmalar avtomatik ravishda qabul qilinadi",
+            style: TextStyle(
+              fontSize: 14,
+              color: Colors.grey.shade600,
+            ),
+            textAlign: TextAlign.center,
+          ),
+        ],
+      ),
+    );
+  }
+
+  // 🔹 Vaqtni formatlash
+  String _getTimeAgo(DateTime date) {
+    final now = DateTime.now();
+    final difference = now.difference(date);
+    
+    if (difference.inMinutes < 1) {
+      return "Hozirgina";
+    } else if (difference.inMinutes < 60) {
+      return "${difference.inMinutes} daqiqa oldin";
+    } else if (difference.inHours < 24) {
+      return "${difference.inHours} soat oldin";
+    } else {
+      return "${difference.inDays} kun oldin";
+    }
+  }
+
+  // ========== CHAT KONTEYNERI ==========
+
   Widget _buildChatContainer() {
-    // 🔹 Agar mijoz tanlangan bo'lsa, yozishma oynasini ko'rsatish
     if (_selectedCustomer != null) {
       return _buildChatConversation(_selectedCustomer!);
     }
 
     return Column(
       children: [
-        // 🔹 Chat turini tanlash paneli
         Container(
           padding: const EdgeInsets.all(16),
           child: Row(
@@ -291,7 +892,6 @@ class _EntrepreneurHomeScreenState extends State<EntrepreneurHomeScreen> {
               ),
               Row(
                 children: [
-                  // 🔹 Mijozlar chat tugmasi
                   GestureDetector(
                     onTap: () {
                       setState(() {
@@ -321,7 +921,6 @@ class _EntrepreneurHomeScreenState extends State<EntrepreneurHomeScreen> {
                     ),
                   ),
                   const SizedBox(width: 8),
-                  // 🔹 Admin chat tugmasi
                   GestureDetector(
                     onTap: () {
                       setState(() {
@@ -352,7 +951,6 @@ class _EntrepreneurHomeScreenState extends State<EntrepreneurHomeScreen> {
                   ),
                 ],
               ),
-              // 🔹 Yopish tugmasi
               IconButton(
                 icon: const Icon(Icons.close, size: 24),
                 onPressed: () {
@@ -366,8 +964,6 @@ class _EntrepreneurHomeScreenState extends State<EntrepreneurHomeScreen> {
           ),
         ),
         const Divider(height: 1),
-
-        // 🔹 Chat kontenti
         Expanded(
           child: _chatType == "Mijozlar" 
               ? _buildCustomersList()
@@ -377,14 +973,11 @@ class _EntrepreneurHomeScreenState extends State<EntrepreneurHomeScreen> {
     );
   }
 
-  // 🔹 Mijozlar ro'yxati
   Widget _buildCustomersList() {
-    // 🔹 Faqat aktiv buyurtmasi bor mijozlarni filtrlash
     final activeCustomers = _customers.where((customer) => customer["orderActive"] == true).toList();
 
     return Column(
       children: [
-        // 🔹 Sarlavha
         Padding(
           padding: const EdgeInsets.all(16),
           child: Row(
@@ -398,8 +991,6 @@ class _EntrepreneurHomeScreenState extends State<EntrepreneurHomeScreen> {
             ],
           ),
         ),
-
-        // 🔹 Mijozlar ro'yxati
         Expanded(
           child: activeCustomers.isEmpty
               ? const Center(
@@ -411,12 +1002,6 @@ class _EntrepreneurHomeScreenState extends State<EntrepreneurHomeScreen> {
                       Text(
                         "Hozircha aktiv mijozlar yo'q",
                         style: TextStyle(fontSize: 16, color: Colors.grey),
-                      ),
-                      SizedBox(height: 8),
-                      Text(
-                        "Buyurtma qabul qilingach, mijoz bilan yozishish mumkin",
-                        textAlign: TextAlign.center,
-                        style: TextStyle(fontSize: 12, color: Colors.grey),
                       ),
                     ],
                   ),
@@ -434,7 +1019,6 @@ class _EntrepreneurHomeScreenState extends State<EntrepreneurHomeScreen> {
     );
   }
 
-  // 🔹 Mijoz chat elementi
   Widget _buildCustomerChatItem(Map<String, dynamic> customer) {
     return Card(
       margin: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
@@ -513,7 +1097,6 @@ class _EntrepreneurHomeScreenState extends State<EntrepreneurHomeScreen> {
         onTap: () {
           setState(() {
             _selectedCustomer = customer;
-            // 🔹 O'qilgan xabarlarni nolga tushirish
             customer["unread"] = 0;
             _updateUnreadCount();
           });
@@ -522,11 +1105,10 @@ class _EntrepreneurHomeScreenState extends State<EntrepreneurHomeScreen> {
     );
   }
 
-  // 🔹 Admin bilan chat - YANGILANGAN
+  // 🔹 Admin bilan chat
   Widget _buildAdminChat() {
     return Column(
       children: [
-        // 🔹 Admin ma'lumotlari
         Container(
           padding: const EdgeInsets.all(16),
           color: Colors.blue.shade50,
@@ -562,58 +1144,48 @@ class _EntrepreneurHomeScreenState extends State<EntrepreneurHomeScreen> {
             ],
           ),
         ),
-
-        // 🔹 Xabarlar ro'yxati - Expanded bilan
-Expanded(
-  child: _adminMessages.isEmpty
-      ? const Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(Icons.chat, size: 64, color: Colors.grey),
-              SizedBox(height: 16),
-              Text(
-                "Hozircha xabarlar yo'q",
-                style: TextStyle(fontSize: 16, color: Colors.grey),
-              ),
-              SizedBox(height: 8),
-              Text(
-                "Administrator bilan yozishingiz mumkin",
-                style: TextStyle(fontSize: 12, color: Colors.grey),
-              ),
-            ],
-          ),
-        )
-      : SingleChildScrollView(
-          reverse: true, // 🔹 Pastga yangi xabarlar joylashishi uchun
-          child: Column(
-            children: [
-              const SizedBox(height: 16),
-              ..._adminMessages.map((message) => _buildMessageBubble(message)),
-              const SizedBox(height: 16),
-            ],
-          ),
+        Expanded(
+          child: _adminMessages.isEmpty
+              ? const Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(Icons.chat, size: 64, color: Colors.grey),
+                      SizedBox(height: 16),
+                      Text(
+                        "Hozircha xabarlar yo'q",
+                        style: TextStyle(fontSize: 16, color: Colors.grey),
+                      ),
+                    ],
+                  ),
+                )
+              : ListView.builder(
+                  controller: _adminScrollController,
+                  padding: const EdgeInsets.all(16),
+                  itemCount: _adminMessages.length,
+                  itemBuilder: (context, index) {
+                    final message = _adminMessages[index];
+                    return _buildMessageBubble(message);
+                  },
+                ),
         ),
-),
-
-        // 🔹 XABAR YOZISH MAYDONI - YANGILANGAN
+        // 🔹 Xabar yozish maydoni
         _buildMessageInputField(
           controller: _adminMessageController,
           focusNode: _adminFocusNode,
-          hintText: "Type your message",
+          hintText: "Xabar yozing...",
           onSend: _sendMessageToAdmin,
         ),
       ],
     );
   }
 
-  // 🔹 Yozishma oynasi - YANGILANGAN
+  // 🔹 Yozishma oynasi
   Widget _buildChatConversation(Map<String, dynamic> customer) {
     final messages = _customerMessages[customer["id"]] ?? [];
 
     return Column(
       children: [
-        // 🔹 Mijoz sarlavhasi
         Container(
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
@@ -662,58 +1234,49 @@ Expanded(
               IconButton(
                 icon: const Icon(Icons.phone, color: Colors.green),
                 onPressed: () => _callCustomer(customer["phone"]),
-            ),
-          ],
-        ),
-      ),
-
-     // 🔹 Yozishma tarixi - Expanded bilan
-Expanded(
-  child: messages.isEmpty
-      ? const Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(Icons.chat_bubble_outline, size: 64, color: Colors.grey),
-              SizedBox(height: 16),
-              Text(
-                "Hozircha xabarlar yo'q",
-                style: TextStyle(fontSize: 16, color: Colors.grey),
-              ),
-              SizedBox(height: 8),
-              Text(
-                "Mijoz bilan yozishishni boshlang",
-                style: TextStyle(fontSize: 12, color: Colors.grey),
               ),
             ],
           ),
-        )
-      : SingleChildScrollView(
-          reverse: true, // 🔹 Pastga yangi xabarlar joylashishi uchun
-          child: Column(
-            children: [
-              const SizedBox(height: 16),
-              ...messages.map((message) => _buildMessageBubble(message)),
-              const SizedBox(height: 16),
-            ],
-          ),
         ),
-),
+        Expanded(
+          child: messages.isEmpty
+              ? const Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(Icons.chat_bubble_outline, size: 64, color: Colors.grey),
+                      SizedBox(height: 16),
+                      Text(
+                        "Hozircha xabarlar yo'q",
+                        style: TextStyle(fontSize: 16, color: Colors.grey),
+                      ),
+                    ],
+                  ),
+                )
+              : ListView.builder(
+                  controller: _customerScrollController,
+                  padding: const EdgeInsets.all(16),
+                  itemCount: messages.length,
+                  itemBuilder: (context, index) {
+                    final message = messages[index];
+                    return _buildMessageBubble(message);
+                  },
+                ),
+        ),
+        // 🔹 Xabar yozish maydoni
+        _buildMessageInputField(
+          controller: _customerMessageController,
+          focusNode: _customerFocusNode,
+          hintText: "Xabar yozing...",
+          onSend: () => _sendMessageToCustomer(customer["id"]),
+          showQuickReplies: true,
+          onQuickReply: (text) => _sendQuickReplyToCustomer(customer["id"], text),
+        ),
+      ],
+    );
+  }
 
-      // 🔹 XABAR YOZISH MAYDONI - YANGILANGAN
-      _buildMessageInputField(
-        controller: _customerMessageController,
-        focusNode: _customerFocusNode,
-        hintText: "Type your message",
-        onSend: () => _sendMessageToCustomer(customer["id"]),
-        showQuickReplies: true,
-        onQuickReply: (text) => _sendQuickReplyToCustomer(customer["id"], text),
-      ),
-    ],
-  );
-}
-
-  // 🔹 XABAR YOZISH MAYDONI - YANGI FUNKSIYA
+  // 🔹 XABAR YOZISH MAYDONI
   Widget _buildMessageInputField({
     required TextEditingController controller,
     required FocusNode focusNode,
@@ -722,8 +1285,17 @@ Expanded(
     bool showQuickReplies = false,
     Function(String)? onQuickReply,
   }) {
+    final mediaQuery = MediaQuery.of(context);
+    final bottomInsets = mediaQuery.viewInsets.bottom;
+    final isKeyboardVisible = bottomInsets > 0;
+
     return Container(
-      padding: const EdgeInsets.all(12),
+      padding: EdgeInsets.only(
+        left: 12,
+        right: 12,
+        top: 8,
+        bottom: isKeyboardVisible ? bottomInsets + 8 : 8,
+      ),
       decoration: BoxDecoration(
         color: Colors.white,
         border: Border(
@@ -758,9 +1330,7 @@ Expanded(
                 ),
                 child: IconButton(
                   icon: const Text('😊', style: TextStyle(fontSize: 18)),
-                  onPressed: () {
-                    // Emoji tanlash funksiyasi
-                  },
+                  onPressed: () {},
                   padding: EdgeInsets.zero,
                   iconSize: 20,
                 ),
@@ -787,9 +1357,7 @@ Expanded(
                       ),
                       suffixIcon: IconButton(
                         icon: const Icon(Icons.attach_file, color: Colors.grey),
-                        onPressed: () {
-                          // Fayl biriktirish funksiyasi
-                        },
+                        onPressed: () {},
                       ),
                     ),
                     onSubmitted: (value) {
@@ -827,7 +1395,6 @@ Expanded(
     );
   }
 
-  // 🔹 Tezkor javob tugmasi
   Widget _buildQuickReplyButton(String text, Function(String)? onQuickReply) {
     return Container(
       margin: const EdgeInsets.only(right: 8),
@@ -851,7 +1418,6 @@ Expanded(
     );
   }
 
-  // 🔹 Xabar pufagi
   Widget _buildMessageBubble(Map<String, dynamic> message) {
     final isSent = message["type"] == "sent";
     return Container(
@@ -911,7 +1477,6 @@ Expanded(
     );
   }
 
-  // 🔹 Yangi xabarlar sonini yangilash
   void _updateUnreadCount() {
     int totalUnread = 0;
     for (var customer in _customers) {
@@ -924,7 +1489,6 @@ Expanded(
 
   // ========== CHAT FUNKTSIYALARI ==========
 
-  // 🔹 Tezkor javob yuborish
   void _sendQuickReplyToCustomer(String customerId, String text) {
     if (text.trim().isEmpty) return;
 
@@ -939,7 +1503,6 @@ Expanded(
         "sender": "Siz",
       });
 
-      // 🔹 Mijozning oxirgi xabarini yangilash
       for (var customer in _customers) {
         if (customer["id"] == customerId) {
           customer["lastMessage"] = text;
@@ -949,6 +1512,9 @@ Expanded(
       }
     });
 
+    // 🔹 Yangi xabardan so'ng pastga skroll qilish
+    _scrollToBottom();
+
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(
         content: Text("Xabar yuborildi"),
@@ -957,7 +1523,6 @@ Expanded(
     );
   }
 
-  // 🔹 Mijozga xabar yuborish
   void _sendMessageToCustomer(String customerId) {
     final message = _customerMessageController.text.trim();
     if (message.isEmpty) return;
@@ -973,7 +1538,6 @@ Expanded(
         "sender": "Siz",
       });
 
-      // 🔹 Mijozning oxirgi xabarini yangilash
       for (var customer in _customers) {
         if (customer["id"] == customerId) {
           customer["lastMessage"] = message;
@@ -982,9 +1546,11 @@ Expanded(
         }
       }
       
-      // 🔹 TextField ni tozalash
       _customerMessageController.clear();
     });
+
+    // 🔹 Yangi xabardan so'ng pastga skroll qilish
+    _scrollToBottom();
 
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(
@@ -994,7 +1560,6 @@ Expanded(
     );
   }
 
-  // 🔹 Administratoga xabar yuborish
   void _sendMessageToAdmin() {
     final message = _adminMessageController.text.trim();
     if (message.isEmpty) return;
@@ -1007,9 +1572,11 @@ Expanded(
         "sender": "Siz",
       });
       
-      // 🔹 TextField ni tozalash
       _adminMessageController.clear();
     });
+
+    // 🔹 Yangi xabardan so'ng pastga skroll qilish
+    _scrollToBottom();
 
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(
@@ -1019,387 +1586,25 @@ Expanded(
     );
   }
 
-  // 🔹 Hozirgi vaqtni olish
   String _getCurrentTime() {
     final now = DateTime.now();
     return "${now.hour}:${now.minute.toString().padLeft(2, '0')}";
   }
 
-  // 🔹 Mijozga qo'ng'iroq qilish
   void _callCustomer(String phone) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text("$phone raqamiga qo'ng'iroq qilinmoqda...")),
     );
   }
 
-  // 🔹 Administratorga qo'ng'iroq qilish
   void _callAdmin() {
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(content: Text("Administratorga qo'ng'iroq qilinmoqda...")),
     );
   }
 
-  // 🔹 Pastki konteynerlarni qurish - YANGILANGAN
-  Widget _buildBottomContainer() {
-    if (_activeBottomContainer.isEmpty) return const SizedBox.shrink();
+  // ========== STATISTIKA KONTEYNERI ==========
 
-    double containerHeight = MediaQuery.of(context).size.height * 0.7;
-    Widget content;
-
-    switch (_activeBottomContainer) {
-      case "chat":
-        content = _buildChatContainer();
-        break;
-      case "stats":
-        content = _buildStatsContainer();
-        break;
-      case "orders":
-        content = _buildOrdersContainer();
-        break;
-      case "settings":
-        content = _buildSettingsContainer();
-        break;
-      default:
-        content = const SizedBox.shrink();
-    }
-
-    return Align(
-      alignment: Alignment.bottomCenter,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 300),
-        height: containerHeight,
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withAlpha((0.3 * 255).toInt()),
-              blurRadius: 16,
-              offset: const Offset(0, -4),
-            ),
-          ],
-        ),
-        child: content,
-      ),
-    );
-  }
-
-  // 🔹 Pastki menyu tugmasi (YANGI XABARLAR SONI QO'SHILGAN)
-  Widget _bottomMenuButton(String label, IconData icon, String id) {
-    final hasNotification = id == "chat" && _unreadMessagesCount > 0;
-    
-    return GestureDetector(
-      onTap: () {
-        setState(() {
-          if (_activeBottomContainer == id) {
-            _activeBottomContainer = "";
-          } else {
-            _activeBottomContainer = id;
-          }
-        });
-      },
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Stack(
-            children: [
-              Container(
-                width: 50,
-                height: 50,
-                decoration: BoxDecoration(
-                  color: _activeBottomContainer == id
-                      ? Colors.blue.shade600
-                      : Colors.blue.shade100,
-                  shape: BoxShape.circle,
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withAlpha((0.1 * 255).toInt()),
-                      blurRadius: 4,
-                      offset: const Offset(0, 2),
-                    ),
-                  ],
-                ),
-                child: Icon(
-                  icon,
-                  color: _activeBottomContainer == id
-                      ? Colors.white
-                      : Colors.blue.shade800,
-                ),
-              ),
-              if (hasNotification)
-                Positioned(
-                  right: 0,
-                  top: 0,
-                  child: Container(
-                    padding: const EdgeInsets.all(4),
-                    decoration: const BoxDecoration(
-                      color: Colors.red,
-                      shape: BoxShape.circle,
-                    ),
-                    child: Text(
-                      _unreadMessagesCount > 9 ? "9+" : _unreadMessagesCount.toString(),
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 8,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ),
-                ),
-            ],
-          ),
-          const SizedBox(height: 6),
-          Text(
-            label,
-            style: TextStyle(
-              fontSize: 11,
-              fontWeight: _activeBottomContainer == id
-                  ? FontWeight.bold
-                  : FontWeight.normal,
-              color: _activeBottomContainer == id
-                  ? Colors.blue.shade800
-                  : Colors.grey.shade700,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  // ========== MAVJUT QISMLARI ==========
-
-  // 🔹 Foydalanuvchi ma'lumotlari paneli
-  Widget _buildUserInfoPanel() {
-    return Positioned(
-      top: 40,
-      right: 15,
-      child: Column(
-        children: [
-          const CircleAvatar(
-            radius: 30,
-            backgroundImage: NetworkImage("https://i.pravatar.cc/150?img=3"),
-          ),
-          const SizedBox(height: 4),
-          const Text(
-            "Ravshanbek Alimov",
-            style: TextStyle(
-              color: Colors.black,
-              fontWeight: FontWeight.bold,
-              fontSize: 10,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  // 🔹 Onlayn/Offlayn holat paneli
-  Widget _buildOnlineStatusPanel() {
-    return Positioned(
-      top: 50,
-      left: 15,
-      child: GestureDetector(
-        onTap: () {
-          setState(() {
-            _isOnline = !_isOnline;
-          });
-        },
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-          decoration: BoxDecoration(
-            color: _isOnline ? Colors.green : Colors.red,
-            borderRadius: BorderRadius.circular(20),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withAlpha((0.1 * 255).toInt()),
-                blurRadius: 4,
-                offset: const Offset(0, 2),
-              ),
-            ],
-          ),
-          child: Row(
-            children: [
-              Icon(
-                _isOnline ? Icons.online_prediction : Icons.offline_bolt,
-                color: Colors.white,
-                size: 16,
-              ),
-              const SizedBox(width: 4),
-              Text(
-                _isOnline ? "Online" : "Offline",
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  // 🔹 Ish rejimini tanlash paneli
-  Widget _buildModeSelector() {
-    return Positioned(
-      top: 120,
-      right: 15,
-      child: DropdownButton<String>(
-        value: _mode,
-        items: const [
-          DropdownMenuItem(
-            value: "RconneX Taxi",
-            child: Text("🚖 RconneX Taxi"),
-          ),
-          DropdownMenuItem(
-            value: "Mahalliy Taxi",
-            child: Text("🚕 Mahalliy Taxi"),
-          ),
-        ],
-        onChanged: (value) {
-          if (value != null) {
-            setState(() {
-              _mode = value;
-              if (_mode == "Mahalliy Taxi") {
-                _activeBottomContainer = "";
-              }
-            });
-          }
-        },
-      ),
-    );
-  }
-
-  // 🔹 Mahalliy taxi paneli
-  Widget _buildLocalTaxiPanel() {
-    if (_mode != "Mahalliy Taxi") return const SizedBox.shrink();
-
-    return Align(
-      alignment: Alignment.bottomCenter,
-      child: Container(
-        height: 320,
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withAlpha((0.1 * 255).toInt()),
-              blurRadius: 4,
-              offset: const Offset(0, 2),
-            ),
-          ],
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceAround,
-              children: [
-                _statusButton("Bo'sh"),
-                _statusButton("Band"),
-                _statusButton("Navbatda"),
-                _statusButton("Yo'nalishda"),
-              ],
-            ),
-            const SizedBox(height: 12),
-            const Text(
-              "📍 Yaqin mijozlar:",
-              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-            ),
-            const SizedBox(height: 8),
-            Expanded(
-              child: ListView.builder(
-                itemCount: _localRequests.length,
-                itemBuilder: (context, index) {
-                  final req = _localRequests[index];
-                  return Card(
-                    margin: const EdgeInsets.symmetric(vertical: 4),
-                    elevation: 2,
-                    child: ListTile(
-                      leading: CircleAvatar(
-                        backgroundColor: Colors.blue.shade100,
-                        child: Text(
-                          "${index + 1}",
-                          style: const TextStyle(fontWeight: FontWeight.bold),
-                        ),
-                      ),
-                      title: Text(
-                        req["name"]?.toString() ?? "Noma'lum mijoz",
-                        style: const TextStyle(fontWeight: FontWeight.w600),
-                      ),
-                      subtitle: Text(
-                        "${req["location"]?.toString() ?? "Noma'lum manzil"} • ${req["distance"]?.toString() ?? "Noma'lum masofa"}"
-                      ),
-                      trailing: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          ElevatedButton(
-                            onPressed: () {
-                              _acceptLocalOrder(index);
-                            },
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: Colors.green,
-                              foregroundColor: Colors.white,
-                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                            ),
-                            child: const Text("Qabul", style: TextStyle(fontSize: 12)),
-                          ),
-                          const SizedBox(width: 4),
-                          ElevatedButton(
-                            onPressed: () {
-                              _rejectLocalOrder(index);
-                            },
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: Colors.red,
-                              foregroundColor: Colors.white,
-                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                            ),
-                            child: const Text("Rad", style: TextStyle(fontSize: 12)),
-                          ),
-                        ],
-                      ),
-                    ),
-                  );
-                },
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  // 🔹 Holat tugmasi
-  Widget _statusButton(String status) {
-    final isActive = _localStatus == status;
-    return GestureDetector(
-      onTap: () {
-        setState(() {
-          _localStatus = status;
-        });
-      },
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-        decoration: BoxDecoration(
-          color: isActive ? Colors.blue.shade600 : Colors.grey.shade100,
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(
-            color: isActive ? Colors.blue.shade600 : Colors.grey.shade300,
-          ),
-        ),
-        child: Text(
-          status,
-          style: TextStyle(
-            color: isActive ? Colors.white : Colors.black,
-            fontWeight: isActive ? FontWeight.bold : FontWeight.normal,
-          ),
-        ),
-      ),
-    );
-  }
-
-  // 🔹 Statistika konteyneri
   Widget _buildStatsContainer() {
     return Column(
       children: [
@@ -1412,13 +1617,67 @@ Expanded(
                 "Statistika",
                 style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
               ),
-              IconButton(
-                icon: const Icon(Icons.close, size: 24),
-                onPressed: () {
-                  setState(() {
-                    _activeBottomContainer = "";
-                  });
-                },
+              Row(
+                children: [
+                  // 🔹 Filtr tugmasi
+                  PopupMenuButton<String>(
+                    icon: const Icon(Icons.filter_list, color: Colors.blue),
+                    onSelected: (value) {
+                      _filterStats(value);
+                    },
+                    itemBuilder: (context) => [
+                      PopupMenuItem(
+                        value: "today",
+                        child: Row(
+                          children: [
+                            Icon(Icons.today, color: _currentFilter == "today" ? Colors.blue : Colors.grey),
+                            const SizedBox(width: 8),
+                            const Text("Bugun"),
+                          ],
+                        ),
+                      ),
+                      PopupMenuItem(
+                        value: "week",
+                        child: Row(
+                          children: [
+                            Icon(Icons.calendar_view_week, color: _currentFilter == "week" ? Colors.blue : Colors.grey),
+                            const SizedBox(width: 8),
+                            const Text("Hafta"),
+                          ],
+                        ),
+                      ),
+                      PopupMenuItem(
+                        value: "month",
+                        child: Row(
+                          children: [
+                            Icon(Icons.calendar_today, color: _currentFilter == "month" ? Colors.blue : Colors.grey),
+                            const SizedBox(width: 8),
+                            const Text("Oy"),
+                          ],
+                        ),
+                      ),
+                      PopupMenuItem(
+                        value: "year",
+                        child: Row(
+                          children: [
+                            Icon(Icons.calendar_view_month, color: _currentFilter == "year" ? Colors.blue : Colors.grey),
+                            const SizedBox(width: 8),
+                            const Text("Yil"),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(width: 8),
+                  IconButton(
+                    icon: const Icon(Icons.close, size: 24),
+                    onPressed: () {
+                      setState(() {
+                        _activeBottomContainer = "";
+                      });
+                    },
+                  ),
+                ],
               ),
             ],
           ),
@@ -1429,69 +1688,20 @@ Expanded(
             padding: const EdgeInsets.all(16),
             child: Column(
               children: [
-                Wrap(
-                  spacing: 12,
-                  runSpacing: 12,
-                  children: [
-                    _buildStatCard(
-                      "Oylik buyurtmalar",
-                      "${_stats['monthly_orders']} ta",
-                      Icons.shopping_cart,
-                      Colors.blue,
-                    ),
-                    _buildStatCard(
-                      "Umumiy masofa",
-                      "${_stats['total_distance']} km",
-                      Icons.directions_car,
-                      Colors.green,
-                    ),
-                    _buildStatCard(
-                      "Oylik daromad",
-                      "${_stats['monthly_earnings']} so'm",
-                      Icons.attach_money,
-                      Colors.orange,
-                    ),
-                    _buildStatCard(
-                      "Reyting",
-                      _stats['rating'].toString(),
-                      Icons.star,
-                      Colors.amber,
-                    ),
-                  ],
-                ),
+                // 🔹 Asosiy ko'rsatkichlar gridi
+                _buildMainStatsGrid(),
                 const SizedBox(height: 20),
-                Card(
-                  elevation: 3,
-                  child: Padding(
-                    padding: const EdgeInsets.all(16),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Text(
-                          "Batafsil statistika",
-                          style: TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                        const SizedBox(height: 12),
-                        _buildStatRow(
-                          "Yakunlangan safarlar",
-                          "${_stats['completed_trips']} ta",
-                        ),
-                        _buildStatRow(
-                          "Bekor qilingan safarlar",
-                          "${_stats['canceled_trips']} ta",
-                        ),
-                        _buildStatRow(
-                          "O'rtacha baho",
-                          _stats['rating'].toString(),
-                        ),
-                        _buildStatRow("Faol kunlar", "28 kun"),
-                      ],
-                    ),
-                  ),
-                ),
+                
+                // 🔹 Daromad grafigi
+                _buildEarningsChart(),
+                const SizedBox(height: 20),
+                
+                // 🔹 Faoliyat statistikasi
+                _buildActivityStats(),
+                const SizedBox(height: 20),
+                
+                // 🔹 Batafsil statistika
+                _buildDetailedStats(),
               ],
             ),
           ),
@@ -1500,106 +1710,449 @@ Expanded(
     );
   }
 
-  // 🔹 Buyurtmalar konteyneri
-  Widget _buildOrdersContainer() {
-    return Column(
+  // 🔹 Asosiy statistika kartalari
+  Widget _buildMainStatsGrid() {
+    return GridView.count(
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      crossAxisCount: 2,
+      crossAxisSpacing: 12,
+      mainAxisSpacing: 12,
+      childAspectRatio: 1.1,
       children: [
-        Container(
-          padding: const EdgeInsets.all(16),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              const Text(
-                "Buyurtmalar",
-                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-              ),
-              IconButton(
-                icon: const Icon(Icons.close, size: 24),
-                onPressed: () {
-                  setState(() {
-                    _activeBottomContainer = "";
-                  });
-                },
-              ),
-            ],
-          ),
+        _buildEnhancedStatCard(
+          "Oylik buyurtmalar",
+          "${_stats['monthly_orders']} ta",
+          Icons.shopping_cart_outlined,
+          Colors.blue,
+          _stats['orders_change'] ?? "+12%",
+          Colors.green,
         ),
-        const Divider(height: 1),
-        Expanded(
-          child: _mode == "RconneX Taxi"
-              ? Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: Column(
-                    children: [
-                      Row(
-                        children: [
-                          FilterChip(
-                            label: const Text("Barchasi"),
-                            selected: true,
-                            onSelected: (bool value) {},
-                          ),
-                          const SizedBox(width: 8),
-                          FilterChip(
-                            label: const Text("Yangi"),
-                            selected: false,
-                            onSelected: (bool value) {},
-                          ),
-                          const SizedBox(width: 8),
-                          FilterChip(
-                            label: const Text("Jarayonda"),
-                            selected: false,
-                            onSelected: (bool value) {},
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 16),
-                      Expanded(
-                        child: ListView.builder(
-                          itemCount: _rconnexOrders.length,
-                          itemBuilder: (context, index) {
-                            return _buildOrderCard(_rconnexOrders[index]);
-                          },
-                        ),
-                      ),
-                    ],
-                  ),
-                )
-              : Center(
-                  child: Padding(
-                    padding: const EdgeInsets.all(32),
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(
-                          Icons.local_taxi,
-                          size: 64,
-                          color: Colors.grey.shade400,
-                        ),
-                        const SizedBox(height: 16),
-                        const Text(
-                          "Mahalliy Taxi rejimi faol",
-                          style: TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                          ),
-                          textAlign: TextAlign.center,
-                        ),
-                        const SizedBox(height: 8),
-                        const Text(
-                          "Mahalliy buyurtmalar avtomatik ravishda asosiy ekranda ko'rsatiladi",
-                          textAlign: TextAlign.center,
-                          style: TextStyle(color: Colors.grey),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
+        _buildEnhancedStatCard(
+          "Umumiy masofa",
+          "${_stats['total_distance']} km",
+          Icons.directions_car_outlined,
+          Colors.green,
+          _stats['distance_change'] ?? "+8%",
+          Colors.green,
+        ),
+        _buildEnhancedStatCard(
+          "Oylik daromad",
+          _formatCurrency(_stats['monthly_earnings']),
+          Icons.attach_money_outlined,
+          Colors.orange,
+          _stats['earnings_change'] ?? "+15%",
+          Colors.green,
+        ),
+        _buildEnhancedStatCard(
+          "Reyting",
+          _stats['rating'].toString(),
+          Icons.star_outline,
+          Colors.amber,
+          "${_stats['reviews_count'] ?? 142} ta baho",
+          Colors.blue,
         ),
       ],
     );
   }
 
-  // 🔹 Sozlamalar konteyneri
+  // 🔹 Takomillashtirilgan statistika kartasi
+  Widget _buildEnhancedStatCard(String title, String value, IconData icon, Color color, String subtitle, Color subtitleColor) {
+    final isPercentage = subtitle.contains('%');
+    final isPositive = isPercentage && subtitle.contains('+');
+    
+    return Card(
+      elevation: 4,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      shadowColor: color.withValues(alpha: 0.2),
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [
+              color.withValues(alpha: 0.05),
+              color.withValues(alpha: 0.02),
+            ],
+          ),
+          borderRadius: BorderRadius.circular(16),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: color.withValues(alpha: 0.1),
+
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Icon(icon, color: color, size: 20),
+                ),
+                if (isPercentage)
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: isPositive ? Colors.green.shade50 : Colors.red.shade50,
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                        color: isPositive ? Colors.green.shade100 : Colors.red.shade100,
+                      ),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          isPositive ? Icons.arrow_upward : Icons.arrow_downward,
+                          size: 12,
+                          color: isPositive ? Colors.green : Colors.red,
+                        ),
+                        const SizedBox(width: 4),
+                        Text(
+                          subtitle,
+                          style: TextStyle(
+                            fontSize: 10,
+                            color: isPositive ? Colors.green : Colors.red,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Text(
+              title,
+              style: TextStyle(
+                fontSize: 12,
+                color: Colors.grey.shade600,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+            Text(
+              value,
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+                color: Colors.black87,
+              ),
+            ),
+            if (!isPercentage)
+              Text(
+                subtitle,
+                style: TextStyle(
+                  fontSize: 11,
+                  color: subtitleColor,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // 🔹 Daromad grafigi
+  Widget _buildEarningsChart() {
+    return Card(
+      elevation: 4,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const Text(
+                  "Daromad statistikasi",
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                ),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: Colors.blue.shade50,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Text(
+                    _getFilterText(),
+                    style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Text(
+              "So'nggi ${_getPeriodText()} daromad o'zgarishi",
+              style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+            ),
+            const SizedBox(height: 16),
+            Container(
+              height: 150,
+              decoration: BoxDecoration(
+                border: Border.all(color: Colors.grey.shade300),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(Icons.bar_chart, size: 48, color: Colors.blue.shade300),
+                    const SizedBox(height: 8),
+                    Text(
+                      "Grafik ko'rsatilmoqda: ${_getFilterText()}",
+                      style: TextStyle(color: Colors.grey.shade500),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      "Daromad: ${_formatCurrency(_stats['monthly_earnings'])}",
+                      style: const TextStyle(fontWeight: FontWeight.bold),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(height: 12),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceAround,
+              children: [
+                _buildChartLegend("Min", "12,000 so'm", Colors.red),
+                _buildChartLegend("O'rtacha", "58,000 so'm", Colors.blue),
+                _buildChartLegend("Maks", "125,000 so'm", Colors.green),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // 🔹 Faoliyat statistikasi
+  Widget _buildActivityStats() {
+    return Card(
+      elevation: 4,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              "Faoliyat ko'rsatkichlari",
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 16),
+            _buildProgressStat("Buyurtma qabul qilish", _stats['acceptance_rate'] ?? 92, Colors.green, "%"),
+            _buildProgressStat("Bajarilgan sayohatlar", _stats['completed_trips'], Colors.blue, "ta"),
+            _buildProgressStat("Onlayn vaqt", _stats['online_hours'], Colors.orange, "soat"),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // 🔹 Progress barlı statistika
+  Widget _buildProgressStat(String label, dynamic value, Color color, String suffix) {
+    final intValue = value is int ? value : int.tryParse(value.toString()) ?? 0;
+    final percentage = intValue / 100.0;
+    
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 12),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                label,
+                style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
+              ),
+              Text(
+                "$value$suffix",
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.bold,
+                  color: color,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Container(
+            height: 6,
+            decoration: BoxDecoration(
+              color: Colors.grey.shade200,
+              borderRadius: BorderRadius.circular(3),
+            ),
+            child: FractionallySizedBox(
+              alignment: Alignment.centerLeft,
+              widthFactor: percentage > 1 ? 1.0 : percentage,
+              child: Container(
+                decoration: BoxDecoration(
+                  color: color,
+                  borderRadius: BorderRadius.circular(3),
+                  gradient: LinearGradient(
+                    colors: [color, color.withValues(alpha: 0.7)],
+
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // 🔹 Batafsil statistika
+  Widget _buildDetailedStats() {
+    return Card(
+      elevation: 4,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              "Batafsil statistika",
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 16),
+            _buildDetailedStatRow("Bajarilgan sayohatlar", "${_stats['completed_trips']} ta", Icons.check_circle, Colors.green),
+            _buildDetailedStatRow("Bekor qilingan sayohatlar", "${_stats['canceled_trips']} ta", Icons.cancel, Colors.red),
+            _buildDetailedStatRow("Mijozlar soni", "${_stats['customers_count']} ta", Icons.people, Colors.purple),
+            _buildDetailedStatRow("O'rtacha baho", _stats['rating'].toString(), Icons.star, Colors.amber),
+            _buildDetailedStatRow("Ish vaqti", "${_stats['working_hours']} soat", Icons.access_time, Colors.blue),
+            _buildDetailedStatRow("O'rtacha daromad", "${_formatCurrency(_stats['avg_earnings'])}/kun", Icons.currency_exchange, Colors.orange),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // 🔹 Batafsil statistika qatori
+  Widget _buildDetailedStatRow(String label, String value, IconData icon, Color color) {
+    return Container(
+      margin: const EdgeInsets.symmetric(vertical: 6),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Colors.grey.shade50,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.grey.shade200),
+      ),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(6),
+            decoration: BoxDecoration(
+              color: color.withValues(alpha: 0.1),
+
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Icon(icon, color: color, size: 18),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              label,
+              style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
+            ),
+          ),
+          Text(
+            value,
+            style: const TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.bold,
+              color: Colors.black87,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // 🔹 Grafik legendasi
+  Widget _buildChartLegend(String title, String value, Color color) {
+    return Column(
+      children: [
+        Container(
+          width: 16,
+          height: 4,
+          decoration: BoxDecoration(
+            color: color,
+            borderRadius: BorderRadius.circular(2),
+          ),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          title,
+          style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold),
+        ),
+        Text(
+          value,
+          style: TextStyle(fontSize: 9, color: Colors.grey.shade600),
+        ),
+      ],
+    );
+  }
+
+  // 🔹 Yordamchi funksiyalar
+  String _formatCurrency(dynamic amount) {
+    final number = amount is int ? amount : int.tryParse(amount.toString()) ?? 0;
+    if (number >= 1000000) {
+      return '${(number / 1000000).toStringAsFixed(1)}M so\'m';
+    } else if (number >= 1000) {
+      return '${(number / 1000).toStringAsFixed(1)}K so\'m';
+    }
+    return number.toString();
+  }
+
+  String _getFilterText() {
+    switch (_currentFilter) {
+      case "today": return "Bugun";
+      case "week": return "Hafta";
+      case "month": return "Oy";
+      case "year": return "Yil";
+      default: return "Oy";
+    }
+  }
+
+  String _getPeriodText() {
+    switch (_currentFilter) {
+      case "today": return "1 kun";
+      case "week": return "7 kun";
+      case "month": return "30 kun";
+      case "year": return "12 oy";
+      default: return "30 kun";
+    }
+  }
+
+  void _filterStats(String period) {
+    setState(() {
+      _currentFilter = period;
+    });
+    
+    // Filtirlash animatsiyasi
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text("Statistika ${_getFilterText().toLowerCase()} boʻyicha filtrlandi"),
+        backgroundColor: Colors.blue,
+        duration: const Duration(seconds: 1),
+      ),
+    );
+  }
+
+  // ========== SOZLAMALAR KONTEYNERI ==========
+
   Widget _buildSettingsContainer() {
     return Column(
       children: [
@@ -1631,17 +2184,13 @@ Expanded(
               final item = _settingsItems[index];
               return Card(
                 margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-                elevation: 1,
                 child: ListTile(
                   leading: Icon(item["icon"], color: Colors.blue.shade600),
                   title: Text(
                     item["title"],
                     style: const TextStyle(fontWeight: FontWeight.w600),
                   ),
-                  subtitle: Text(
-                    item["subtitle"],
-                    style: const TextStyle(fontSize: 12),
-                  ),
+                  subtitle: Text(item["subtitle"]),
                   trailing: const Icon(Icons.arrow_forward_ios, size: 16),
                   onTap: () {
                     _navigateToSetting(item["title"]);
@@ -1660,162 +2209,378 @@ Expanded(
               foregroundColor: Colors.white,
               minimumSize: const Size(double.infinity, 50),
             ),
-            child: const Text("Chiqish", style: TextStyle(fontSize: 16)),
+            child: const Text("Chiqish"),
           ),
         ),
       ],
     );
   }
 
-  // 🔹 Statistika kartasi
-  Widget _buildStatCard(String title, String value, IconData icon, Color color) {
-    return Card(
-      elevation: 2,
-      child: Container(
-        padding: const EdgeInsets.all(12),
-        width: 110,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Icon(icon, color: color, size: 24),
-            const SizedBox(height: 8),
-            Text(
-              title,
-              style: const TextStyle(fontSize: 12, color: Colors.grey),
-            ),
-            Text(
-              value,
-              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-            ),
-          ],
-        ),
+  // ========== BOTTOM CONTAINER FUNKTSIYALARI ==========
+
+  Widget _buildBottomContainer() {
+    if (_activeBottomContainer.isEmpty) return const SizedBox.shrink();
+
+    final mediaQuery = MediaQuery.of(context);
+    final bottomInsets = mediaQuery.viewInsets.bottom;
+    final isKeyboardVisible = bottomInsets > 0;
+
+    // 🔹 Konteyner balandligini klaviatura holatiga qarab sozlash
+    double containerHeight = isKeyboardVisible 
+        ? mediaQuery.size.height * 0.95
+        : mediaQuery.size.height * 0.7;
+
+    Widget content;
+
+    switch (_activeBottomContainer) {
+      case "chat":
+        content = _buildChatContainer();
+        break;
+      case "stats":
+        content = _buildStatsContainer();
+        break;
+      case "orders":
+        content = _buildOrdersContainer();
+        break;
+      case "settings":
+        content = _buildSettingsContainer();
+        break;
+      default:
+        content = const SizedBox.shrink();
+    }
+
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 300),
+      height: containerHeight,
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.3),
+
+            blurRadius: 16,
+            offset: const Offset(0, -4),
+          ),
+        ],
       ),
+      child: content,
     );
   }
 
-  // 🔹 Buyurtma kartasi
-  Widget _buildOrderCard(Map<String, dynamic> order) {
-    return Card(
-      elevation: 3,
-      margin: const EdgeInsets.symmetric(vertical: 6),
-      child: Padding(
-        padding: const EdgeInsets.all(12),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  order["id"],
-                  style: const TextStyle(
-                    fontWeight: FontWeight.bold,
-                    color: Colors.blue,
-                  ),
-                ),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: Colors.orange.shade100,
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Text(
-                    order["status"],
-                    style: const TextStyle(fontSize: 12),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 8),
-            Text(
-              "Mijoz: ${order["customer"]}",
-              style: const TextStyle(fontWeight: FontWeight.w600),
-            ),
-            const SizedBox(height: 4),
-            Row(
-              children: [
-                Icon(Icons.location_on, color: Colors.green.shade600, size: 16),
-                const SizedBox(width: 4),
-                Expanded(child: Text("Dan: ${order["from"]}")),
-              ],
-            ),
-            Row(
-              children: [
-                Icon(Icons.flag, color: Colors.red.shade600, size: 16),
-                const SizedBox(width: 4),
-                Expanded(child: Text("Gacha: ${order["to"]}")),
-              ],
-            ),
-            const SizedBox(height: 8),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Row(
-                  children: [
-                    Icon(Icons.directions_car, color: Colors.grey.shade600, size: 14),
-                    const SizedBox(width: 4),
-                    Text(order["distance"]),
-                  ],
-                ),
-                Row(
-                  children: [
-                    Icon(Icons.access_time, color: Colors.grey.shade600, size: 14),
-                    const SizedBox(width: 4),
-                    Text(order["time"]),
-                  ],
-                ),
-                Text(
-                  order["price"],
-                  style: const TextStyle(
-                    fontWeight: FontWeight.bold,
-                    color: Colors.green,
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 8),
-            Row(
-              children: [
-                Expanded(
-                  child: ElevatedButton(
-                    onPressed: () => _acceptOrder(order["id"]),
-                    style: ElevatedButton.styleFrom(backgroundColor: Colors.green),
-                    child: const Text("Qabul qilish", style: TextStyle(color: Colors.white)),
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: OutlinedButton(
-                    onPressed: () => _rejectOrder(order["id"]),
-                    child: const Text("Rad etish"),
-                  ),
-                ),
-              ],
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  // 🔹 Statistika qatori
-  Widget _buildStatRow(String title, String value) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+  // 🔹 Pastki menyu tugmasi - YANGILANGAN (buyurtmalar soni ko'rsatiladi)
+  Widget _bottomMenuButton(String label, IconData icon, String id) {
+    final hasNotification = id == "chat" && _unreadMessagesCount > 0;
+    final hasNewOrders = id == "orders" && _newOrdersCount > 0;
+    
+    return GestureDetector(
+      onTap: () {
+        setState(() {
+          if (_activeBottomContainer == id) {
+            _activeBottomContainer = "";
+          } else {
+            _activeBottomContainer = id;
+          }
+        });
+      },
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
         children: [
-          Text(title, style: const TextStyle(color: Colors.grey)),
-          Text(value, style: const TextStyle(fontWeight: FontWeight.bold)),
+          Stack(
+            children: [
+              Container(
+                width: 50,
+                height: 50,
+                decoration: BoxDecoration(
+                  color: _activeBottomContainer == id
+                      ? Colors.blue.shade600
+                      : Colors.blue.shade100,
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(
+                  icon,
+                  color: _activeBottomContainer == id
+                      ? Colors.white
+                      : Colors.blue.shade800,
+                ),
+              ),
+              if (hasNotification)
+                Positioned(
+                  right: 0,
+                  top: 0,
+                  child: Container(
+                    padding: const EdgeInsets.all(4),
+                    decoration: const BoxDecoration(
+                      color: Colors.red,
+                      shape: BoxShape.circle,
+                    ),
+                    child: Text(
+                      _unreadMessagesCount > 9 ? "9+" : _unreadMessagesCount.toString(),
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 8,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                ),
+              if (hasNewOrders)
+                Positioned(
+                  right: 0,
+                  top: 0,
+                  child: Container(
+                    padding: const EdgeInsets.all(4),
+                    decoration: const BoxDecoration(
+                      color: Colors.orange,
+                      shape: BoxShape.circle,
+                    ),
+                    child: Text(
+                      _newOrdersCount > 9 ? "9+" : _newOrdersCount.toString(),
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 8,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                ),
+            ],
+          ),
+          const SizedBox(height: 6),
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 11,
+              fontWeight: _activeBottomContainer == id
+                  ? FontWeight.bold
+                  : FontWeight.normal,
+              color: _activeBottomContainer == id
+                  ? Colors.blue.shade800
+                  : Colors.grey.shade700,
+            ),
+          ),
         ],
       ),
     );
   }
 
-  // 🔹 Asosiy UI qurilishi - YANGILANGAN
+  // ========== QOLGAN WIDGETLAR ==========
+
+  Widget _buildUserInfoPanel() {
+    return Positioned(
+      top: 40,
+      right: 15,
+      child: Column(
+        children: [
+          const CircleAvatar(
+            radius: 30,
+            backgroundImage: NetworkImage("https://i.pravatar.cc/150?img=3"),
+          ),
+          const SizedBox(height: 4),
+          const Text(
+            "Ravshanbek Alimov",
+            style: TextStyle(
+              color: Colors.black,
+              fontWeight: FontWeight.bold,
+              fontSize: 10,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildOnlineStatusPanel() {
+    return Positioned(
+      top: 50,
+      left: 15,
+      child: GestureDetector(
+        onTap: () {
+          setState(() {
+            _isOnline = !_isOnline;
+          });
+        },
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+          decoration: BoxDecoration(
+            color: _isOnline ? Colors.green : Colors.red,
+            borderRadius: BorderRadius.circular(20),
+          ),
+          child: Row(
+            children: [
+              Icon(
+                _isOnline ? Icons.online_prediction : Icons.offline_bolt,
+                color: Colors.white,
+                size: 16,
+              ),
+              const SizedBox(width: 4),
+              Text(
+                _isOnline ? "Online" : "Offline",
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildModeSelector() {
+    return Positioned(
+      top: 120,
+      right: 15,
+      child: DropdownButton<String>(
+        value: _mode,
+        items: const [
+          DropdownMenuItem(
+            value: "RconneX Taxi",
+            child: Text("🚖 RconneX Taxi"),
+          ),
+          DropdownMenuItem(
+            value: "Mahalliy Taxi",
+            child: Text("🚕 Mahalliy Taxi"),
+          ),
+        ],
+        onChanged: (value) {
+          if (value != null) {
+            setState(() {
+              _mode = value;
+              if (_mode == "Mahalliy Taxi") {
+                _activeBottomContainer = "";
+              }
+            });
+          }
+        },
+      ),
+    );
+  }
+
+  Widget _buildLocalTaxiPanel() {
+    if (_mode != "Mahalliy Taxi") return const SizedBox.shrink();
+
+    return Align(
+      alignment: Alignment.bottomCenter,
+      child: Container(
+        height: 320,
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceAround,
+              children: [
+                _statusButton("Bo'sh"),
+                _statusButton("Band"),
+                _statusButton("Navbatda"),
+                _statusButton("Yo'nalishda"),
+              ],
+            ),
+            const SizedBox(height: 12),
+            const Text(
+              "📍 Yaqin mijozlar:",
+              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+            ),
+            const SizedBox(height: 8),
+            Expanded(
+              child: ListView.builder(
+                itemCount: _localRequests.length,
+                itemBuilder: (context, index) {
+                  final req = _localRequests[index];
+                  return Card(
+                    margin: const EdgeInsets.symmetric(vertical: 4),
+                    child: ListTile(
+                      leading: CircleAvatar(
+                        backgroundColor: Colors.blue.shade100,
+                        child: Text(
+                          "${index + 1}",
+                          style: const TextStyle(fontWeight: FontWeight.bold),
+                        ),
+                      ),
+                      title: Text(
+                        req["name"]?.toString() ?? "Noma'lum mijoz",
+                        style: const TextStyle(fontWeight: FontWeight.w600),
+                      ),
+                      subtitle: Text(
+                        "${req["location"]?.toString() ?? "Noma'lum manzil"} • ${req["distance"]?.toString() ?? "Noma'lum masofa"}"
+                      ),
+                      trailing: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          ElevatedButton(
+                            onPressed: () {
+                              _acceptLocalOrder(index);
+                            },
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.green,
+                              foregroundColor: Colors.white,
+                            ),
+                            child: const Text("Qabul"),
+                          ),
+                          const SizedBox(width: 4),
+                          ElevatedButton(
+                            onPressed: () {
+                              _rejectLocalOrder(index);
+                            },
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.red,
+                              foregroundColor: Colors.white,
+                            ),
+                            child: const Text("Rad"),
+                          ),
+                        ],
+                      ),
+                    ),
+                  );
+                },
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _statusButton(String status) {
+    final isActive = _localStatus == status;
+    return GestureDetector(
+      onTap: () {
+        setState(() {
+          _localStatus = status;
+        });
+      },
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        decoration: BoxDecoration(
+          color: isActive ? Colors.blue.shade600 : Colors.grey.shade100,
+          borderRadius: BorderRadius.circular(20),
+        ),
+        child: Text(
+          status,
+          style: TextStyle(
+            color: isActive ? Colors.white : Colors.black,
+          ),
+        ),
+      ),
+    );
+  }
+
+  // ========== ASOSIY BUILD METODI ==========
+
   @override
   Widget build(BuildContext context) {
+    final mediaQuery = MediaQuery.of(context);
+    final bottomInsets = mediaQuery.viewInsets.bottom;
+    final isKeyboardVisible = bottomInsets > 0;
+
     return Scaffold(
+      resizeToAvoidBottomInset: false,
       body: Stack(
         children: [
           GoogleMap(
@@ -1834,48 +2599,43 @@ Expanded(
           _buildModeSelector(),
           _buildLocalTaxiPanel(),
           
-          // 🔹 Bottom container klaviatura ostida ko'rinishi uchun
+          // 🔹 BOTTOM CONTAINER - Klaviatura ustida
           Positioned(
-            bottom: 100, // 🔹 Pastki menyu balandligi
+            bottom: isKeyboardVisible ? 0 : 100,
             left: 0,
             right: 0,
             child: _buildBottomContainer(),
           ),
 
-          // 🔹 Pastki menyu
-          Align(
-            alignment: Alignment.bottomCenter,
-            child: Container(
-              height: 100,
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withAlpha((0.2 * 255).toInt()),
-                    blurRadius: 12,
-                    offset: const Offset(0, -4),
-                  ),
-                ],
-              ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceAround,
-                children: [
-                  _bottomMenuButton("Xabarlar", Icons.chat, "chat"),
-                  _bottomMenuButton("Statistika", Icons.bar_chart, "stats"),
-                  _bottomMenuButton("Buyurtmalar", Icons.list_alt, "orders"),
-                  _bottomMenuButton("Sozlamalar", Icons.settings, "settings"),
-                ],
+          // 🔹 PASTKI MENYU - Klaviatura ochiq bo'lsa yashirinadi
+          if (!isKeyboardVisible)
+            Align(
+              alignment: Alignment.bottomCenter,
+              child: Container(
+                height: 100,
+                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceAround,
+                  children: [
+                    _bottomMenuButton("Xabarlar", Icons.chat, "chat"),
+                    _bottomMenuButton("Statistika", Icons.bar_chart, "stats"),
+                    _bottomMenuButton("Buyurtmalar", Icons.list_alt, "orders"),
+                    _bottomMenuButton("Sozlamalar", Icons.settings, "settings"),
+                  ],
+                ),
               ),
             ),
-          ),
         ],
       ),
     );
   }
 
-  // 🔹 FUNKTSIYALAR
+  // ========== QOLGAN FUNKTSIYALAR ==========
+
   void _acceptLocalOrder(int index) {
     showDialog(
       context: context,
@@ -1923,18 +2683,6 @@ Expanded(
           ),
         ],
       ),
-    );
-  }
-
-  void _acceptOrder(String orderId) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text("$orderId buyurtmasi qabul qilindi")),
-    );
-  }
-
-  void _rejectOrder(String orderId) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text("$orderId buyurtmasi rad etildi")),
     );
   }
 
