@@ -1,6 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:m_taksi/views/auth/help_screen.dart';
 
+// Import qilishlar - bu yerda sizning mavjud fayllaringizni import qiling
+import 'entrepreneur_profile_screen.dart';
+import 'entrepreneur_car_info_screen.dart';
+import 'payment_card_registration_screen.dart';
 // 🔹 Tadbirkor (entrepreneur) asosiy ekrani - holatni saqlaydigan widget
 class EntrepreneurHomeScreen extends StatefulWidget {
   const EntrepreneurHomeScreen({super.key});
@@ -43,7 +48,8 @@ class _EntrepreneurHomeScreenState extends State<EntrepreneurHomeScreen> {
 
   // 🔹 TextField controllerlari
   final TextEditingController _adminMessageController = TextEditingController();
-  final TextEditingController _customerMessageController = TextEditingController();
+  final TextEditingController _customerMessageController =
+      TextEditingController();
 
   // 🔹 FocusNode lar
   final FocusNode _adminFocusNode = FocusNode();
@@ -59,6 +65,12 @@ class _EntrepreneurHomeScreenState extends State<EntrepreneurHomeScreen> {
   // 🔹 Buyurtmalar filtri
   String _orderFilter = "all";
 
+  // 🔹 Til sozlamalari
+  String _selectedLanguage = "O'zbekcha";
+  
+  // 🔹 Tema sozlamalari
+  String _selectedTheme = "Tungi";
+
   // 🔹 Admin bilan yozishma
   final List<Map<String, dynamic>> _adminMessages = [
     {
@@ -68,7 +80,7 @@ class _EntrepreneurHomeScreenState extends State<EntrepreneurHomeScreen> {
       "sender": "Admin",
     },
     {
-      "type": "sent", 
+      "type": "sent",
       "text": "Va alaykum assalom! Qanday yangiliklar?",
       "time": "09:16",
       "sender": "Siz",
@@ -88,7 +100,7 @@ class _EntrepreneurHomeScreenState extends State<EntrepreneurHomeScreen> {
       "orderActive": true,
     },
     {
-      "id": "2", 
+      "id": "2",
       "name": "Dilshod Rashidov",
       "phone": "+998907654321",
       "lastMessage": "Manzilni to'g'ri tushundimmi?",
@@ -104,7 +116,7 @@ class _EntrepreneurHomeScreenState extends State<EntrepreneurHomeScreen> {
       "lastMessage": "Rahmat, kutaman",
       "time": "Yesterday",
       "unread": 0,
-      "orderId": "#RCX-003", 
+      "orderId": "#RCX-003",
       "orderActive": false,
     },
   ];
@@ -121,7 +133,7 @@ class _EntrepreneurHomeScreenState extends State<EntrepreneurHomeScreen> {
       {
         "type": "sent",
         "text": "5 daqiqada yetib boraman",
-        "time": "10:31", 
+        "time": "10:31",
         "sender": "Siz",
       },
       {
@@ -133,7 +145,7 @@ class _EntrepreneurHomeScreenState extends State<EntrepreneurHomeScreen> {
     ],
     "2": [
       {
-        "type": "received", 
+        "type": "received",
         "text": "Manzilni to'g'ri tushundimmi?",
         "time": "09:45",
         "sender": "Dilshod Rashidov",
@@ -156,7 +168,7 @@ class _EntrepreneurHomeScreenState extends State<EntrepreneurHomeScreen> {
     "completed_trips": 142,
     "canceled_trips": 14,
     "orders_change": "+12%",
-    "distance_change": "+8%", 
+    "distance_change": "+8%",
     "earnings_change": "+15%",
     "reviews_count": 142,
     "working_hours": 8,
@@ -230,62 +242,50 @@ class _EntrepreneurHomeScreenState extends State<EntrepreneurHomeScreen> {
     },
   ];
 
-  // 🔹 Sozlamalar ro'yxati
+  // 🔹 YANGILANGAN SOZLAMALAR RO'YXATI - BILDIRISHNOMALAR OLIB TASHLANDI
   final List<Map<String, dynamic>> _settingsItems = [
     {
       "icon": Icons.person,
       "title": "Profil ma'lumotlari",
       "subtitle": "Shaxsiy ma'lumotlarni yangilash",
-    },
-    {
-      "icon": Icons.credit_card,
-      "title": "To'lov tizimi",
-      "subtitle": "Karta va naqd pul sozlamalari",
-    },
-    {
-      "icon": Icons.notifications,
-      "title": "Bildirishnomalar",
-      "subtitle": "Xabarlarni boshqarish",
-    },
-    {
-      "icon": Icons.security,
-      "title": "Xavfsizlik",
-      "subtitle": "Parol va kirish sozlamalari",
+      "type": "navigation",
+      "screen": "profile"
     },
     {
       "icon": Icons.car_repair,
       "title": "Mashina ma'lumotlari",
       "subtitle": "Transport vositasini yangilash",
+      "type": "navigation", 
+      "screen": "car_info"
+    },
+    {
+      "icon": Icons.credit_card,
+      "title": "To'lov tizimi",
+      "subtitle": "Karta va naqd pul sozlamalari",
+      "type": "navigation",
+      "screen": "payment"
+    },
+    {
+      "icon": Icons.settings_applications,
+      "title": "Ilova sozlamalari",
+      "subtitle": "Til va tema sozlamalari",
+      "type": "settings"
     },
     {
       "icon": Icons.help,
       "title": "Yordam va qo'llab-quvvatlash",
       "subtitle": "Savol va takliflar",
+      "type": "navigation",
+      "screen": "help_screen" // 🔹 YANGILANDI: help_screen.dart ga o'tish
     },
   ];
 
   // 🔹 Sinov uchun mahalliy so'rovlar ro'yxati
   final List<Map<String, dynamic>> _localRequests = [
-    {
-      "name": "Mijoz 1", 
-      "location": "Xonobod", 
-      "distance": "1.2 km"
-    },
-    {
-      "name": "Mijoz 2", 
-      "location": "Asaka yo'li", 
-      "distance": "2.5 km"
-    },
-    {
-      "name": "Mijoz 3", 
-      "location": "Andijon markazi", 
-      "distance": "3.0 km"
-    },
-    {
-      "name": "Mijoz 4", 
-      "location": "Qo'rg'ontepa", 
-      "distance": "4.1 km"
-    },
+    {"name": "Mijoz 1", "location": "Xonobod", "distance": "1.2 km"},
+    {"name": "Mijoz 2", "location": "Asaka yo'li", "distance": "2.5 km"},
+    {"name": "Mijoz 3", "location": "Andijon markazi", "distance": "3.0 km"},
+    {"name": "Mijoz 4", "location": "Qo'rg'ontepa", "distance": "4.1 km"},
   ];
 
   // 🔹 Xarita yaratilganda chaqiriladigan funksiya
@@ -310,7 +310,7 @@ class _EntrepreneurHomeScreenState extends State<EntrepreneurHomeScreen> {
     super.initState();
     _adminFocusNode.addListener(_onKeyboardChanged);
     _customerFocusNode.addListener(_onKeyboardChanged);
-    
+
     // 🔹 ScrollController larni tinglash
     _adminScrollController.addListener(_scrollListener);
     _customerScrollController.addListener(_scrollListener);
@@ -378,7 +378,7 @@ class _EntrepreneurHomeScreenState extends State<EntrepreneurHomeScreen> {
       order["status"] = "active";
       _updateNewOrdersCount();
     });
-    
+
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text("$orderId buyurtmasi qabul qilindi"),
@@ -395,7 +395,7 @@ class _EntrepreneurHomeScreenState extends State<EntrepreneurHomeScreen> {
       order["status"] = "rejected";
       _updateNewOrdersCount();
     });
-    
+
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text("$orderId buyurtmasi rad etildi"),
@@ -411,7 +411,7 @@ class _EntrepreneurHomeScreenState extends State<EntrepreneurHomeScreen> {
       order["type"] = "completed";
       order["status"] = "completed";
     });
-    
+
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text("$orderId buyurtmasi yakunlandi"),
@@ -446,7 +446,7 @@ class _EntrepreneurHomeScreenState extends State<EntrepreneurHomeScreen> {
           ),
         ),
         const Divider(height: 1),
-        
+
         // 🔹 Filtr tugmalari
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -467,12 +467,13 @@ class _EntrepreneurHomeScreenState extends State<EntrepreneurHomeScreen> {
             ),
           ),
         ),
-        
+
         const Divider(height: 1),
         Expanded(
-          child: _mode == "RconneX Taxi"
-              ? _buildRconnexOrdersList()
-              : _buildLocalTaxiOrders(),
+          child:
+              _mode == "RconneX Taxi"
+                  ? _buildRconnexOrdersList()
+                  : _buildLocalTaxiOrders(),
         ),
       ],
     );
@@ -482,7 +483,7 @@ class _EntrepreneurHomeScreenState extends State<EntrepreneurHomeScreen> {
   Widget _buildOrderFilterChip(String label, String value) {
     final isSelected = _orderFilter == value;
     final hasNewOrders = value == "new" && _newOrdersCount > 0;
-    
+
     return FilterChip(
       label: Row(
         mainAxisSize: MainAxisSize.min,
@@ -527,30 +528,33 @@ class _EntrepreneurHomeScreenState extends State<EntrepreneurHomeScreen> {
   // 🔹 RconneX buyurtmalari ro'yxati
   Widget _buildRconnexOrdersList() {
     List<Map<String, dynamic>> filteredOrders = _rconnexOrders;
-    
+
     if (_orderFilter != "all") {
-      filteredOrders = _rconnexOrders.where((order) => order["type"] == _orderFilter).toList();
+      filteredOrders =
+          _rconnexOrders
+              .where((order) => order["type"] == _orderFilter)
+              .toList();
     }
-    
+
     // 🔹 Vaqt bo'yicha tartiblash (yangi buyurtmalar birinchi)
     filteredOrders.sort((a, b) => b["createdAt"].compareTo(a["createdAt"]));
 
     return filteredOrders.isEmpty
         ? _buildEmptyOrdersState()
         : ListView.builder(
-            padding: const EdgeInsets.all(16),
-            itemCount: filteredOrders.length,
-            itemBuilder: (context, index) {
-              return _buildEnhancedOrderCard(filteredOrders[index]);
-            },
-          );
+          padding: const EdgeInsets.all(16),
+          itemCount: filteredOrders.length,
+          itemBuilder: (context, index) {
+            return _buildEnhancedOrderCard(filteredOrders[index]);
+          },
+        );
   }
 
   // 🔹 Bo'sh buyurtmalar holati
   Widget _buildEmptyOrdersState() {
     String message = "";
     IconData icon = Icons.list_alt;
-    
+
     switch (_orderFilter) {
       case "new":
         message = "Hozircha yangi buyurtmalar yo'q";
@@ -571,7 +575,7 @@ class _EntrepreneurHomeScreenState extends State<EntrepreneurHomeScreen> {
       default:
         message = "Hozircha buyurtmalar yo'q";
     }
-    
+
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
@@ -580,10 +584,7 @@ class _EntrepreneurHomeScreenState extends State<EntrepreneurHomeScreen> {
           const SizedBox(height: 16),
           Text(
             message,
-            style: TextStyle(
-              fontSize: 16,
-              color: Colors.grey.shade600,
-            ),
+            style: TextStyle(fontSize: 16, color: Colors.grey.shade600),
             textAlign: TextAlign.center,
           ),
         ],
@@ -596,7 +597,7 @@ class _EntrepreneurHomeScreenState extends State<EntrepreneurHomeScreen> {
     Color statusColor = Colors.grey;
     Color cardColor = Colors.white;
     String statusText = "";
-    
+
     switch (order["type"]) {
       case "new":
         statusColor = Colors.orange;
@@ -646,13 +647,17 @@ class _EntrepreneurHomeScreenState extends State<EntrepreneurHomeScreen> {
                   ),
                 ),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 6,
+                  ),
                   decoration: BoxDecoration(
                     color: statusColor.withValues(alpha: 0.1),
 
                     borderRadius: BorderRadius.circular(16),
-                    border: Border.all(color: statusColor.withValues(alpha: 0.3)),
-
+                    border: Border.all(
+                      color: statusColor.withValues(alpha: 0.3),
+                    ),
                   ),
                   child: Text(
                     statusText,
@@ -665,9 +670,9 @@ class _EntrepreneurHomeScreenState extends State<EntrepreneurHomeScreen> {
                 ),
               ],
             ),
-            
+
             const SizedBox(height: 8),
-            
+
             // 🔹 Mijoz ma'lumotlari
             Row(
               children: [
@@ -679,27 +684,31 @@ class _EntrepreneurHomeScreenState extends State<EntrepreneurHomeScreen> {
                 ),
               ],
             ),
-            
+
             const SizedBox(height: 8),
-            
+
             // 🔹 Manzil ma'lumotlari
             _buildLocationRow("📍 Dan:", order["from"], Colors.green),
             _buildLocationRow("🎯 Gacha:", order["to"], Colors.red),
-            
+
             const SizedBox(height: 12),
-            
+
             // 🔹 Statistika qatori
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                _buildOrderStat("Masofa", order["distance"], Icons.directions_car),
+                _buildOrderStat(
+                  "Masofa",
+                  order["distance"],
+                  Icons.directions_car,
+                ),
                 _buildOrderStat("Vaqt", order["time"], Icons.access_time),
                 _buildOrderStat("Narx", order["price"], Icons.attach_money),
               ],
             ),
-            
+
             const SizedBox(height: 12),
-            
+
             // 🔹 Vaqt va amallar qatori
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -712,9 +721,9 @@ class _EntrepreneurHomeScreenState extends State<EntrepreneurHomeScreen> {
                     fontStyle: FontStyle.italic,
                   ),
                 ),
-                
+
                 // 🔹 Harakat tugmalari
-                if (order["type"] == "new") 
+                if (order["type"] == "new")
                   _buildActionButtons(order["id"], true, false)
                 else if (order["type"] == "active")
                   _buildActionButtons(order["id"], false, true)
@@ -766,17 +775,11 @@ class _EntrepreneurHomeScreenState extends State<EntrepreneurHomeScreen> {
         const SizedBox(height: 4),
         Text(
           value,
-          style: const TextStyle(
-            fontSize: 12,
-            fontWeight: FontWeight.bold,
-          ),
+          style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
         ),
         Text(
           label,
-          style: TextStyle(
-            fontSize: 10,
-            color: Colors.grey.shade600,
-          ),
+          style: TextStyle(fontSize: 10, color: Colors.grey.shade600),
         ),
       ],
     );
@@ -829,26 +832,16 @@ class _EntrepreneurHomeScreenState extends State<EntrepreneurHomeScreen> {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(
-            Icons.local_taxi,
-            size: 64,
-            color: Colors.grey.shade400,
-          ),
+          Icon(Icons.local_taxi, size: 64, color: Colors.grey.shade400),
           const SizedBox(height: 16),
           const Text(
             "Mahalliy Taxi rejimi faol",
-            style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-            ),
+            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 8),
           Text(
             "Buyurtmalar avtomatik ravishda qabul qilinadi",
-            style: TextStyle(
-              fontSize: 14,
-              color: Colors.grey.shade600,
-            ),
+            style: TextStyle(fontSize: 14, color: Colors.grey.shade600),
             textAlign: TextAlign.center,
           ),
         ],
@@ -860,7 +853,7 @@ class _EntrepreneurHomeScreenState extends State<EntrepreneurHomeScreen> {
   String _getTimeAgo(DateTime date) {
     final now = DateTime.now();
     final difference = now.difference(date);
-    
+
     if (difference.inMinutes < 1) {
       return "Hozirgina";
     } else if (difference.inMinutes < 60) {
@@ -905,17 +898,19 @@ class _EntrepreneurHomeScreenState extends State<EntrepreneurHomeScreen> {
                         vertical: 8,
                       ),
                       decoration: BoxDecoration(
-                        color: _chatType == "Mijozlar"
-                            ? Colors.blue.shade600
-                            : Colors.grey.shade300,
+                        color:
+                            _chatType == "Mijozlar"
+                                ? Colors.blue.shade600
+                                : Colors.grey.shade300,
                         borderRadius: BorderRadius.circular(20),
                       ),
                       child: Text(
                         "Mijozlar",
                         style: TextStyle(
-                          color: _chatType == "Mijozlar" 
-                              ? Colors.white 
-                              : Colors.black,
+                          color:
+                              _chatType == "Mijozlar"
+                                  ? Colors.white
+                                  : Colors.black,
                         ),
                       ),
                     ),
@@ -934,17 +929,19 @@ class _EntrepreneurHomeScreenState extends State<EntrepreneurHomeScreen> {
                         vertical: 8,
                       ),
                       decoration: BoxDecoration(
-                        color: _chatType == "Admin"
-                            ? Colors.blue.shade600
-                            : Colors.grey.shade300,
+                        color:
+                            _chatType == "Admin"
+                                ? Colors.blue.shade600
+                                : Colors.grey.shade300,
                         borderRadius: BorderRadius.circular(20),
                       ),
                       child: Text(
                         "Admin",
                         style: TextStyle(
-                          color: _chatType == "Admin" 
-                              ? Colors.white 
-                              : Colors.black,
+                          color:
+                              _chatType == "Admin"
+                                  ? Colors.white
+                                  : Colors.black,
                         ),
                       ),
                     ),
@@ -965,16 +962,20 @@ class _EntrepreneurHomeScreenState extends State<EntrepreneurHomeScreen> {
         ),
         const Divider(height: 1),
         Expanded(
-          child: _chatType == "Mijozlar" 
-              ? _buildCustomersList()
-              : _buildAdminChat(),
+          child:
+              _chatType == "Mijozlar"
+                  ? _buildCustomersList()
+                  : _buildAdminChat(),
         ),
       ],
     );
   }
 
   Widget _buildCustomersList() {
-    final activeCustomers = _customers.where((customer) => customer["orderActive"] == true).toList();
+    final activeCustomers =
+        _customers
+            .where((customer) => customer["orderActive"] == true)
+            .toList();
 
     return Column(
       children: [
@@ -992,28 +993,33 @@ class _EntrepreneurHomeScreenState extends State<EntrepreneurHomeScreen> {
           ),
         ),
         Expanded(
-          child: activeCustomers.isEmpty
-              ? const Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(Icons.chat_bubble_outline, size: 64, color: Colors.grey),
-                      SizedBox(height: 16),
-                      Text(
-                        "Hozircha aktiv mijozlar yo'q",
-                        style: TextStyle(fontSize: 16, color: Colors.grey),
-                      ),
-                    ],
+          child:
+              activeCustomers.isEmpty
+                  ? const Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          Icons.chat_bubble_outline,
+                          size: 64,
+                          color: Colors.grey,
+                        ),
+                        SizedBox(height: 16),
+                        Text(
+                          "Hozircha aktiv mijozlar yo'q",
+                          style: TextStyle(fontSize: 16, color: Colors.grey),
+                        ),
+                      ],
+                    ),
+                  )
+                  : ListView.builder(
+                    padding: const EdgeInsets.all(8),
+                    itemCount: activeCustomers.length,
+                    itemBuilder: (context, index) {
+                      final customer = activeCustomers[index];
+                      return _buildCustomerChatItem(customer);
+                    },
                   ),
-                )
-              : ListView.builder(
-                  padding: const EdgeInsets.all(8),
-                  itemCount: activeCustomers.length,
-                  itemBuilder: (context, index) {
-                    final customer = activeCustomers[index];
-                    return _buildCustomerChatItem(customer);
-                  },
-                ),
         ),
       ],
     );
@@ -1062,10 +1068,7 @@ class _EntrepreneurHomeScreenState extends State<EntrepreneurHomeScreen> {
           children: [
             Text(
               customer["lastMessage"],
-              style: TextStyle(
-                color: Colors.grey.shade600,
-                fontSize: 12,
-              ),
+              style: TextStyle(color: Colors.grey.shade600, fontSize: 12),
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
             ),
@@ -1085,10 +1088,7 @@ class _EntrepreneurHomeScreenState extends State<EntrepreneurHomeScreen> {
           children: [
             Text(
               customer["time"],
-              style: TextStyle(
-                fontSize: 10,
-                color: Colors.grey.shade500,
-              ),
+              style: TextStyle(fontSize: 10, color: Colors.grey.shade500),
             ),
             if (customer["unread"] > 0)
               const Icon(Icons.mark_chat_unread, color: Colors.red, size: 16),
@@ -1145,29 +1145,30 @@ class _EntrepreneurHomeScreenState extends State<EntrepreneurHomeScreen> {
           ),
         ),
         Expanded(
-          child: _adminMessages.isEmpty
-              ? const Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(Icons.chat, size: 64, color: Colors.grey),
-                      SizedBox(height: 16),
-                      Text(
-                        "Hozircha xabarlar yo'q",
-                        style: TextStyle(fontSize: 16, color: Colors.grey),
-                      ),
-                    ],
+          child:
+              _adminMessages.isEmpty
+                  ? const Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(Icons.chat, size: 64, color: Colors.grey),
+                        SizedBox(height: 16),
+                        Text(
+                          "Hozircha xabarlar yo'q",
+                          style: TextStyle(fontSize: 16, color: Colors.grey),
+                        ),
+                      ],
+                    ),
+                  )
+                  : ListView.builder(
+                    controller: _adminScrollController,
+                    padding: const EdgeInsets.all(16),
+                    itemCount: _adminMessages.length,
+                    itemBuilder: (context, index) {
+                      final message = _adminMessages[index];
+                      return _buildMessageBubble(message);
+                    },
                   ),
-                )
-              : ListView.builder(
-                  controller: _adminScrollController,
-                  padding: const EdgeInsets.all(16),
-                  itemCount: _adminMessages.length,
-                  itemBuilder: (context, index) {
-                    final message = _adminMessages[index];
-                    return _buildMessageBubble(message);
-                  },
-                ),
         ),
         // 🔹 Xabar yozish maydoni
         _buildMessageInputField(
@@ -1239,29 +1240,34 @@ class _EntrepreneurHomeScreenState extends State<EntrepreneurHomeScreen> {
           ),
         ),
         Expanded(
-          child: messages.isEmpty
-              ? const Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(Icons.chat_bubble_outline, size: 64, color: Colors.grey),
-                      SizedBox(height: 16),
-                      Text(
-                        "Hozircha xabarlar yo'q",
-                        style: TextStyle(fontSize: 16, color: Colors.grey),
-                      ),
-                    ],
+          child:
+              messages.isEmpty
+                  ? const Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          Icons.chat_bubble_outline,
+                          size: 64,
+                          color: Colors.grey,
+                        ),
+                        SizedBox(height: 16),
+                        Text(
+                          "Hozircha xabarlar yo'q",
+                          style: TextStyle(fontSize: 16, color: Colors.grey),
+                        ),
+                      ],
+                    ),
+                  )
+                  : ListView.builder(
+                    controller: _customerScrollController,
+                    padding: const EdgeInsets.all(16),
+                    itemCount: messages.length,
+                    itemBuilder: (context, index) {
+                      final message = messages[index];
+                      return _buildMessageBubble(message);
+                    },
                   ),
-                )
-              : ListView.builder(
-                  controller: _customerScrollController,
-                  padding: const EdgeInsets.all(16),
-                  itemCount: messages.length,
-                  itemBuilder: (context, index) {
-                    final message = messages[index];
-                    return _buildMessageBubble(message);
-                  },
-                ),
         ),
         // 🔹 Xabar yozish maydoni
         _buildMessageInputField(
@@ -1270,7 +1276,8 @@ class _EntrepreneurHomeScreenState extends State<EntrepreneurHomeScreen> {
           hintText: "Xabar yozing...",
           onSend: () => _sendMessageToCustomer(customer["id"]),
           showQuickReplies: true,
-          onQuickReply: (text) => _sendQuickReplyToCustomer(customer["id"], text),
+          onQuickReply:
+              (text) => _sendQuickReplyToCustomer(customer["id"], text),
         ),
       ],
     );
@@ -1298,9 +1305,7 @@ class _EntrepreneurHomeScreenState extends State<EntrepreneurHomeScreen> {
       ),
       decoration: BoxDecoration(
         color: Colors.white,
-        border: Border(
-          top: BorderSide(color: Colors.grey.shade300),
-        ),
+        border: Border(top: BorderSide(color: Colors.grey.shade300)),
       ),
       child: Column(
         children: [
@@ -1336,7 +1341,7 @@ class _EntrepreneurHomeScreenState extends State<EntrepreneurHomeScreen> {
                 ),
               ),
               const SizedBox(width: 8),
-              
+
               // 🔹 Xabar yozish maydoni
               Expanded(
                 child: Container(
@@ -1369,7 +1374,7 @@ class _EntrepreneurHomeScreenState extends State<EntrepreneurHomeScreen> {
                 ),
               ),
               const SizedBox(width: 8),
-              
+
               // 🔹 Yuborish tugmasi
               Container(
                 width: 40,
@@ -1410,10 +1415,7 @@ class _EntrepreneurHomeScreenState extends State<EntrepreneurHomeScreen> {
           ),
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
         ),
-        child: Text(
-          text,
-          style: const TextStyle(fontSize: 12),
-        ),
+        child: Text(text, style: const TextStyle(fontSize: 12)),
       ),
     );
   }
@@ -1423,7 +1425,8 @@ class _EntrepreneurHomeScreenState extends State<EntrepreneurHomeScreen> {
     return Container(
       margin: const EdgeInsets.symmetric(vertical: 4),
       child: Row(
-        mainAxisAlignment: isSent ? MainAxisAlignment.end : MainAxisAlignment.start,
+        mainAxisAlignment:
+            isSent ? MainAxisAlignment.end : MainAxisAlignment.start,
         children: [
           if (!isSent) ...[
             CircleAvatar(
@@ -1457,7 +1460,9 @@ class _EntrepreneurHomeScreenState extends State<EntrepreneurHomeScreen> {
                     ),
                   Text(
                     message["text"],
-                    style: TextStyle(color: isSent ? Colors.white : Colors.black),
+                    style: TextStyle(
+                      color: isSent ? Colors.white : Colors.black,
+                    ),
                   ),
                   const SizedBox(height: 2),
                   Text(
@@ -1545,7 +1550,7 @@ class _EntrepreneurHomeScreenState extends State<EntrepreneurHomeScreen> {
           break;
         }
       }
-      
+
       _customerMessageController.clear();
     });
 
@@ -1571,7 +1576,7 @@ class _EntrepreneurHomeScreenState extends State<EntrepreneurHomeScreen> {
         "time": _getCurrentTime(),
         "sender": "Siz",
       });
-      
+
       _adminMessageController.clear();
     });
 
@@ -1625,48 +1630,73 @@ class _EntrepreneurHomeScreenState extends State<EntrepreneurHomeScreen> {
                     onSelected: (value) {
                       _filterStats(value);
                     },
-                    itemBuilder: (context) => [
-                      PopupMenuItem(
-                        value: "today",
-                        child: Row(
-                          children: [
-                            Icon(Icons.today, color: _currentFilter == "today" ? Colors.blue : Colors.grey),
-                            const SizedBox(width: 8),
-                            const Text("Bugun"),
-                          ],
-                        ),
-                      ),
-                      PopupMenuItem(
-                        value: "week",
-                        child: Row(
-                          children: [
-                            Icon(Icons.calendar_view_week, color: _currentFilter == "week" ? Colors.blue : Colors.grey),
-                            const SizedBox(width: 8),
-                            const Text("Hafta"),
-                          ],
-                        ),
-                      ),
-                      PopupMenuItem(
-                        value: "month",
-                        child: Row(
-                          children: [
-                            Icon(Icons.calendar_today, color: _currentFilter == "month" ? Colors.blue : Colors.grey),
-                            const SizedBox(width: 8),
-                            const Text("Oy"),
-                          ],
-                        ),
-                      ),
-                      PopupMenuItem(
-                        value: "year",
-                        child: Row(
-                          children: [
-                            Icon(Icons.calendar_view_month, color: _currentFilter == "year" ? Colors.blue : Colors.grey),
-                            const SizedBox(width: 8),
-                            const Text("Yil"),
-                          ],
-                        ),
-                      ),
-                    ],
+                    itemBuilder:
+                        (context) => [
+                          PopupMenuItem(
+                            value: "today",
+                            child: Row(
+                              children: [
+                                Icon(
+                                  Icons.today,
+                                  color:
+                                      _currentFilter == "today"
+                                          ? Colors.blue
+                                          : Colors.grey,
+                                ),
+                                const SizedBox(width: 8),
+                                const Text("Bugun"),
+                              ],
+                            ),
+                          ),
+                          PopupMenuItem(
+                            value: "week",
+                            child: Row(
+                              children: [
+                                Icon(
+                                  Icons.calendar_view_week,
+                                  color:
+                                      _currentFilter == "week"
+                                          ? Colors.blue
+                                          : Colors.grey,
+                                ),
+                                const SizedBox(width: 8),
+                                const Text("Hafta"),
+                              ],
+                            ),
+                          ),
+                          PopupMenuItem(
+                            value: "month",
+                            child: Row(
+                              children: [
+                                Icon(
+                                  Icons.calendar_today,
+                                  color:
+                                      _currentFilter == "month"
+                                          ? Colors.blue
+                                          : Colors.grey,
+                                ),
+                                const SizedBox(width: 8),
+                                const Text("Oy"),
+                              ],
+                            ),
+                          ),
+                          PopupMenuItem(
+                            value: "year",
+                            child: Row(
+                              children: [
+                                Icon(
+                                  Icons.calendar_view_month,
+                                  color:
+                                      _currentFilter == "year"
+                                          ? Colors.blue
+                                          : Colors.grey,
+                                ),
+                                const SizedBox(width: 8),
+                                const Text("Yil"),
+                              ],
+                            ),
+                          ),
+                        ],
                   ),
                   const SizedBox(width: 8),
                   IconButton(
@@ -1691,15 +1721,15 @@ class _EntrepreneurHomeScreenState extends State<EntrepreneurHomeScreen> {
                 // 🔹 Asosiy ko'rsatkichlar gridi
                 _buildMainStatsGrid(),
                 const SizedBox(height: 20),
-                
+
                 // 🔹 Daromad grafigi
                 _buildEarningsChart(),
                 const SizedBox(height: 20),
-                
+
                 // 🔹 Faoliyat statistikasi
                 _buildActivityStats(),
                 const SizedBox(height: 20),
-                
+
                 // 🔹 Batafsil statistika
                 _buildDetailedStats(),
               ],
@@ -1757,10 +1787,17 @@ class _EntrepreneurHomeScreenState extends State<EntrepreneurHomeScreen> {
   }
 
   // 🔹 Takomillashtirilgan statistika kartasi
-  Widget _buildEnhancedStatCard(String title, String value, IconData icon, Color color, String subtitle, Color subtitleColor) {
+  Widget _buildEnhancedStatCard(
+    String title,
+    String value,
+    IconData icon,
+    Color color,
+    String subtitle,
+    Color subtitleColor,
+  ) {
     final isPercentage = subtitle.contains('%');
     final isPositive = isPercentage && subtitle.contains('+');
-    
+
     return Card(
       elevation: 4,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
@@ -1796,19 +1833,30 @@ class _EntrepreneurHomeScreenState extends State<EntrepreneurHomeScreen> {
                 ),
                 if (isPercentage)
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 4,
+                    ),
                     decoration: BoxDecoration(
-                      color: isPositive ? Colors.green.shade50 : Colors.red.shade50,
+                      color:
+                          isPositive
+                              ? Colors.green.shade50
+                              : Colors.red.shade50,
                       borderRadius: BorderRadius.circular(12),
                       border: Border.all(
-                        color: isPositive ? Colors.green.shade100 : Colors.red.shade100,
+                        color:
+                            isPositive
+                                ? Colors.green.shade100
+                                : Colors.red.shade100,
                       ),
                     ),
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         Icon(
-                          isPositive ? Icons.arrow_upward : Icons.arrow_downward,
+                          isPositive
+                              ? Icons.arrow_upward
+                              : Icons.arrow_downward,
                           size: 12,
                           color: isPositive ? Colors.green : Colors.red,
                         ),
@@ -1876,14 +1924,20 @@ class _EntrepreneurHomeScreenState extends State<EntrepreneurHomeScreen> {
                   style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                 ),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 4,
+                  ),
                   decoration: BoxDecoration(
                     color: Colors.blue.shade50,
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Text(
                     _getFilterText(),
-                    style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500),
+                    style: const TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w500,
+                    ),
                   ),
                 ),
               ],
@@ -1904,7 +1958,11 @@ class _EntrepreneurHomeScreenState extends State<EntrepreneurHomeScreen> {
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Icon(Icons.bar_chart, size: 48, color: Colors.blue.shade300),
+                    Icon(
+                      Icons.bar_chart,
+                      size: 48,
+                      color: Colors.blue.shade300,
+                    ),
                     const SizedBox(height: 8),
                     Text(
                       "Grafik ko'rsatilmoqda: ${_getFilterText()}",
@@ -1949,9 +2007,24 @@ class _EntrepreneurHomeScreenState extends State<EntrepreneurHomeScreen> {
               style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 16),
-            _buildProgressStat("Buyurtma qabul qilish", _stats['acceptance_rate'] ?? 92, Colors.green, "%"),
-            _buildProgressStat("Bajarilgan sayohatlar", _stats['completed_trips'], Colors.blue, "ta"),
-            _buildProgressStat("Onlayn vaqt", _stats['online_hours'], Colors.orange, "soat"),
+            _buildProgressStat(
+              "Buyurtma qabul qilish",
+              _stats['acceptance_rate'] ?? 92,
+              Colors.green,
+              "%",
+            ),
+            _buildProgressStat(
+              "Bajarilgan sayohatlar",
+              _stats['completed_trips'],
+              Colors.blue,
+              "ta",
+            ),
+            _buildProgressStat(
+              "Onlayn vaqt",
+              _stats['online_hours'],
+              Colors.orange,
+              "soat",
+            ),
           ],
         ),
       ),
@@ -1959,10 +2032,15 @@ class _EntrepreneurHomeScreenState extends State<EntrepreneurHomeScreen> {
   }
 
   // 🔹 Progress barlı statistika
-  Widget _buildProgressStat(String label, dynamic value, Color color, String suffix) {
+  Widget _buildProgressStat(
+    String label,
+    dynamic value,
+    Color color,
+    String suffix,
+  ) {
     final intValue = value is int ? value : int.tryParse(value.toString()) ?? 0;
     final percentage = intValue / 100.0;
-    
+
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 12),
       child: Column(
@@ -1973,7 +2051,10 @@ class _EntrepreneurHomeScreenState extends State<EntrepreneurHomeScreen> {
             children: [
               Text(
                 label,
-                style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
+                style: const TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w500,
+                ),
               ),
               Text(
                 "$value$suffix",
@@ -2001,7 +2082,6 @@ class _EntrepreneurHomeScreenState extends State<EntrepreneurHomeScreen> {
                   borderRadius: BorderRadius.circular(3),
                   gradient: LinearGradient(
                     colors: [color, color.withValues(alpha: 0.7)],
-
                   ),
                 ),
               ),
@@ -2027,12 +2107,42 @@ class _EntrepreneurHomeScreenState extends State<EntrepreneurHomeScreen> {
               style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 16),
-            _buildDetailedStatRow("Bajarilgan sayohatlar", "${_stats['completed_trips']} ta", Icons.check_circle, Colors.green),
-            _buildDetailedStatRow("Bekor qilingan sayohatlar", "${_stats['canceled_trips']} ta", Icons.cancel, Colors.red),
-            _buildDetailedStatRow("Mijozlar soni", "${_stats['customers_count']} ta", Icons.people, Colors.purple),
-            _buildDetailedStatRow("O'rtacha baho", _stats['rating'].toString(), Icons.star, Colors.amber),
-            _buildDetailedStatRow("Ish vaqti", "${_stats['working_hours']} soat", Icons.access_time, Colors.blue),
-            _buildDetailedStatRow("O'rtacha daromad", "${_formatCurrency(_stats['avg_earnings'])}/kun", Icons.currency_exchange, Colors.orange),
+            _buildDetailedStatRow(
+              "Bajarilgan sayohatlar",
+              "${_stats['completed_trips']} ta",
+              Icons.check_circle,
+              Colors.green,
+            ),
+            _buildDetailedStatRow(
+              "Bekor qilingan sayohatlar",
+              "${_stats['canceled_trips']} ta",
+              Icons.cancel,
+              Colors.red,
+            ),
+            _buildDetailedStatRow(
+              "Mijozlar soni",
+              "${_stats['customers_count']} ta",
+              Icons.people,
+              Colors.purple,
+            ),
+            _buildDetailedStatRow(
+              "O'rtacha baho",
+              _stats['rating'].toString(),
+              Icons.star,
+              Colors.amber,
+            ),
+            _buildDetailedStatRow(
+              "Ish vaqti",
+              "${_stats['working_hours']} soat",
+              Icons.access_time,
+              Colors.blue,
+            ),
+            _buildDetailedStatRow(
+              "O'rtacha daromad",
+              "${_formatCurrency(_stats['avg_earnings'])}/kun",
+              Icons.currency_exchange,
+              Colors.orange,
+            ),
           ],
         ),
       ),
@@ -2040,7 +2150,12 @@ class _EntrepreneurHomeScreenState extends State<EntrepreneurHomeScreen> {
   }
 
   // 🔹 Batafsil statistika qatori
-  Widget _buildDetailedStatRow(String label, String value, IconData icon, Color color) {
+  Widget _buildDetailedStatRow(
+    String label,
+    String value,
+    IconData icon,
+    Color color,
+  ) {
     return Container(
       margin: const EdgeInsets.symmetric(vertical: 6),
       padding: const EdgeInsets.all(12),
@@ -2097,17 +2212,15 @@ class _EntrepreneurHomeScreenState extends State<EntrepreneurHomeScreen> {
           title,
           style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold),
         ),
-        Text(
-          value,
-          style: TextStyle(fontSize: 9, color: Colors.grey.shade600),
-        ),
+        Text(value, style: TextStyle(fontSize: 9, color: Colors.grey.shade600)),
       ],
     );
   }
 
   // 🔹 Yordamchi funksiyalar
   String _formatCurrency(dynamic amount) {
-    final number = amount is int ? amount : int.tryParse(amount.toString()) ?? 0;
+    final number =
+        amount is int ? amount : int.tryParse(amount.toString()) ?? 0;
     if (number >= 1000000) {
       return '${(number / 1000000).toStringAsFixed(1)}M so\'m';
     } else if (number >= 1000) {
@@ -2118,21 +2231,31 @@ class _EntrepreneurHomeScreenState extends State<EntrepreneurHomeScreen> {
 
   String _getFilterText() {
     switch (_currentFilter) {
-      case "today": return "Bugun";
-      case "week": return "Hafta";
-      case "month": return "Oy";
-      case "year": return "Yil";
-      default: return "Oy";
+      case "today":
+        return "Bugun";
+      case "week":
+        return "Hafta";
+      case "month":
+        return "Oy";
+      case "year":
+        return "Yil";
+      default:
+        return "Oy";
     }
   }
 
   String _getPeriodText() {
     switch (_currentFilter) {
-      case "today": return "1 kun";
-      case "week": return "7 kun";
-      case "month": return "30 kun";
-      case "year": return "12 oy";
-      default: return "30 kun";
+      case "today":
+        return "1 kun";
+      case "week":
+        return "7 kun";
+      case "month":
+        return "30 kun";
+      case "year":
+        return "12 oy";
+      default:
+        return "30 kun";
     }
   }
 
@@ -2140,18 +2263,20 @@ class _EntrepreneurHomeScreenState extends State<EntrepreneurHomeScreen> {
     setState(() {
       _currentFilter = period;
     });
-    
+
     // Filtirlash animatsiyasi
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text("Statistika ${_getFilterText().toLowerCase()} boʻyicha filtrlandi"),
+        content: Text(
+          "Statistika ${_getFilterText().toLowerCase()} boʻyicha filtrlandi",
+        ),
         backgroundColor: Colors.blue,
         duration: const Duration(seconds: 1),
       ),
     );
   }
 
-  // ========== SOZLAMALAR KONTEYNERI ==========
+  // ========== YANGILANGAN SOZLAMALAR KONTEYNERI ==========
 
   Widget _buildSettingsContainer() {
     return Column(
@@ -2193,26 +2318,166 @@ class _EntrepreneurHomeScreenState extends State<EntrepreneurHomeScreen> {
                   subtitle: Text(item["subtitle"]),
                   trailing: const Icon(Icons.arrow_forward_ios, size: 16),
                   onTap: () {
-                    _navigateToSetting(item["title"]);
+                    _navigateToSetting(item);
                   },
                 ),
               );
             },
           ),
         ),
+        // Container(
+        //   padding: const EdgeInsets.all(16),
+        //   child: ElevatedButton(
+        //     onPressed: _logout,
+        //     style: ElevatedButton.styleFrom(
+        //       backgroundColor: Colors.red.shade600,
+        //       foregroundColor: Colors.white,
+        //       minimumSize: const Size(double.infinity, 50),
+        //     ),
+        //     child: const Text("Chiqish"),
+        //   ),
+        // ),
+      ],
+    );
+  }
+
+  // 🔹 Ilova sozlamalari konteyneri
+  Widget _buildAppSettingsContainer() {
+    return Column(
+      children: [
         Container(
           padding: const EdgeInsets.all(16),
-          child: ElevatedButton(
-            onPressed: _logout,
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.red.shade600,
-              foregroundColor: Colors.white,
-              minimumSize: const Size(double.infinity, 50),
-            ),
-            child: const Text("Chiqish"),
+          child: Row(
+            children: [
+              IconButton(
+                icon: const Icon(Icons.arrow_back),
+                onPressed: () {
+                  setState(() {
+                    _activeBottomContainer = "settings";
+                  });
+                },
+              ),
+              const SizedBox(width: 8),
+              const Text(
+                "Ilova sozlamalari",
+                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+              ),
+            ],
+          ),
+        ),
+        const Divider(height: 1),
+        Expanded(
+          child: ListView(
+            padding: const EdgeInsets.all(16),
+            children: [
+              // 🔹 Til sozlamalari
+              Card(
+                child: Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        "Til sozlamalari",
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      _buildLanguageOption("O'zbekcha", "O'zbekcha", Icons.language),
+                      _buildLanguageOption("Русский", "Ruscha", Icons.language),
+                      _buildLanguageOption("English", "Inglizcha", Icons.language),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(height: 16),
+              
+              // 🔹 Tema sozlamalari
+              Card(
+                child: Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        "Ilova temasi",
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      _buildThemeOption("Tungi", "Qorong'i tema", Icons.nightlight_round),
+                      _buildThemeOption("Kunduzgi", "Och ranglar", Icons.wb_sunny),
+                      _buildThemeOption("Avtomatik", "Tizim temasi", Icons.settings),
+                    ],
+                  ),
+                ),
+              ),
+            ],
           ),
         ),
       ],
+    );
+  }
+
+  // 🔹 Til variantini yaratish
+  Widget _buildLanguageOption(String title, String subtitle, IconData icon) {
+    final isSelected = _selectedLanguage == title;
+    
+    return Card(
+      margin: const EdgeInsets.symmetric(vertical: 4),
+      color: isSelected ? Colors.blue.shade50 : Colors.white,
+      child: ListTile(
+        leading: Icon(icon, color: isSelected ? Colors.blue : Colors.grey),
+        title: Text(title, style: TextStyle(
+          fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+          color: isSelected ? Colors.blue : Colors.black,
+        )),
+        subtitle: Text(subtitle),
+        trailing: isSelected 
+            ? const Icon(Icons.check_circle, color: Colors.blue)
+            : null,
+        onTap: () {
+          setState(() {
+            _selectedLanguage = title;
+          });
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text("Til $title ga o'zgartirildi")),
+          );
+        },
+      ),
+    );
+  }
+
+  // 🔹 Tema variantini yaratish
+  Widget _buildThemeOption(String title, String subtitle, IconData icon) {
+    final isSelected = _selectedTheme == title;
+    
+    return Card(
+      margin: const EdgeInsets.symmetric(vertical: 4),
+      color: isSelected ? Colors.blue.shade50 : Colors.white,
+      child: ListTile(
+        leading: Icon(icon, color: isSelected ? Colors.blue : Colors.grey),
+        title: Text(title, style: TextStyle(
+          fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+          color: isSelected ? Colors.blue : Colors.black,
+        )),
+        subtitle: Text(subtitle),
+        trailing: isSelected 
+            ? const Icon(Icons.check_circle, color: Colors.blue)
+            : null,
+        onTap: () {
+          setState(() {
+            _selectedTheme = title;
+          });
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text("Tema $title ga o'zgartirildi")),
+          );
+        },
+      ),
     );
   }
 
@@ -2226,9 +2491,10 @@ class _EntrepreneurHomeScreenState extends State<EntrepreneurHomeScreen> {
     final isKeyboardVisible = bottomInsets > 0;
 
     // 🔹 Konteyner balandligini klaviatura holatiga qarab sozlash
-    double containerHeight = isKeyboardVisible 
-        ? mediaQuery.size.height * 0.95
-        : mediaQuery.size.height * 0.7;
+    double containerHeight =
+        isKeyboardVisible
+            ? mediaQuery.size.height * 0.95
+            : mediaQuery.size.height * 0.7;
 
     Widget content;
 
@@ -2244,6 +2510,9 @@ class _EntrepreneurHomeScreenState extends State<EntrepreneurHomeScreen> {
         break;
       case "settings":
         content = _buildSettingsContainer();
+        break;
+      case "app_settings":
+        content = _buildAppSettingsContainer();
         break;
       default:
         content = const SizedBox.shrink();
@@ -2272,7 +2541,7 @@ class _EntrepreneurHomeScreenState extends State<EntrepreneurHomeScreen> {
   Widget _bottomMenuButton(String label, IconData icon, String id) {
     final hasNotification = id == "chat" && _unreadMessagesCount > 0;
     final hasNewOrders = id == "orders" && _newOrdersCount > 0;
-    
+
     return GestureDetector(
       onTap: () {
         setState(() {
@@ -2292,16 +2561,18 @@ class _EntrepreneurHomeScreenState extends State<EntrepreneurHomeScreen> {
                 width: 50,
                 height: 50,
                 decoration: BoxDecoration(
-                  color: _activeBottomContainer == id
-                      ? Colors.blue.shade600
-                      : Colors.blue.shade100,
+                  color:
+                      _activeBottomContainer == id
+                          ? Colors.blue.shade600
+                          : Colors.blue.shade100,
                   shape: BoxShape.circle,
                 ),
                 child: Icon(
                   icon,
-                  color: _activeBottomContainer == id
-                      ? Colors.white
-                      : Colors.blue.shade800,
+                  color:
+                      _activeBottomContainer == id
+                          ? Colors.white
+                          : Colors.blue.shade800,
                 ),
               ),
               if (hasNotification)
@@ -2315,7 +2586,9 @@ class _EntrepreneurHomeScreenState extends State<EntrepreneurHomeScreen> {
                       shape: BoxShape.circle,
                     ),
                     child: Text(
-                      _unreadMessagesCount > 9 ? "9+" : _unreadMessagesCount.toString(),
+                      _unreadMessagesCount > 9
+                          ? "9+"
+                          : _unreadMessagesCount.toString(),
                       style: const TextStyle(
                         color: Colors.white,
                         fontSize: 8,
@@ -2351,12 +2624,14 @@ class _EntrepreneurHomeScreenState extends State<EntrepreneurHomeScreen> {
             label,
             style: TextStyle(
               fontSize: 11,
-              fontWeight: _activeBottomContainer == id
-                  ? FontWeight.bold
-                  : FontWeight.normal,
-              color: _activeBottomContainer == id
-                  ? Colors.blue.shade800
-                  : Colors.grey.shade700,
+              fontWeight:
+                  _activeBottomContainer == id
+                      ? FontWeight.bold
+                      : FontWeight.normal,
+              color:
+                  _activeBottomContainer == id
+                      ? Colors.blue.shade800
+                      : Colors.grey.shade700,
             ),
           ),
         ],
@@ -2508,7 +2783,7 @@ class _EntrepreneurHomeScreenState extends State<EntrepreneurHomeScreen> {
                         style: const TextStyle(fontWeight: FontWeight.w600),
                       ),
                       subtitle: Text(
-                        "${req["location"]?.toString() ?? "Noma'lum manzil"} • ${req["distance"]?.toString() ?? "Noma'lum masofa"}"
+                        "${req["location"]?.toString() ?? "Noma'lum manzil"} • ${req["distance"]?.toString() ?? "Noma'lum masofa"}",
                       ),
                       trailing: Row(
                         mainAxisSize: MainAxisSize.min,
@@ -2563,9 +2838,7 @@ class _EntrepreneurHomeScreenState extends State<EntrepreneurHomeScreen> {
         ),
         child: Text(
           status,
-          style: TextStyle(
-            color: isActive ? Colors.white : Colors.black,
-          ),
+          style: TextStyle(color: isActive ? Colors.white : Colors.black),
         ),
       ),
     );
@@ -2598,7 +2871,7 @@ class _EntrepreneurHomeScreenState extends State<EntrepreneurHomeScreen> {
           _buildOnlineStatusPanel(),
           _buildModeSelector(),
           _buildLocalTaxiPanel(),
-          
+
           // 🔹 BOTTOM CONTAINER - Klaviatura ustida
           Positioned(
             bottom: isKeyboardVisible ? 0 : 100,
@@ -2607,16 +2880,33 @@ class _EntrepreneurHomeScreenState extends State<EntrepreneurHomeScreen> {
             child: _buildBottomContainer(),
           ),
 
-          // 🔹 PASTKI MENYU - Klaviatura ochiq bo'lsa yashirinadi
+          /// 🔹 PASTKI MENYU - Klaviatura ochiq bo'lsa yashirinadi
           if (!isKeyboardVisible)
             Align(
               alignment: Alignment.bottomCenter,
               child: Container(
                 height: 100,
-                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 20,
+                  vertical: 12,
+                ),
                 decoration: BoxDecoration(
                   color: Colors.white,
-                  borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+                  borderRadius: const BorderRadius.vertical(
+                    top: Radius.circular(24),
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(
+                        alpha: 0.25,
+                      ), // Soyaning rangi va tiniqligi
+                      blurRadius: 10, // Soya tarqalish darajasi
+                      offset: const Offset(
+                        0,
+                        -2,
+                      ), // Soyaning joylashuvi (y yuqoriga)
+                    ),
+                  ],
                 ),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceAround,
@@ -2639,81 +2929,147 @@ class _EntrepreneurHomeScreenState extends State<EntrepreneurHomeScreen> {
   void _acceptLocalOrder(int index) {
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text("Buyurtma qabul qilish"),
-        content: Text("${_localRequests[index]['name']} ning buyurtmasini qabul qilishni tasdiqlaysizmi?"),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text("Bekor qilish"),
+      builder:
+          (context) => AlertDialog(
+            title: const Text("Buyurtma qabul qilish"),
+            content: Text(
+              "${_localRequests[index]['name']} ning buyurtmasini qabul qilishni tasdiqlaysizmi?",
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text("Bekor qilish"),
+              ),
+              ElevatedButton(
+                onPressed: () {
+                  Navigator.pop(context);
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(
+                        "${_localRequests[index]['name']} buyurtmasi qabul qilindi",
+                      ),
+                    ),
+                  );
+                },
+                child: const Text("Tasdiqlash"),
+              ),
+            ],
           ),
-          ElevatedButton(
-            onPressed: () {
-              Navigator.pop(context);
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text("${_localRequests[index]['name']} buyurtmasi qabul qilindi")),
-              );
-            },
-            child: const Text("Tasdiqlash"),
-          ),
-        ],
-      ),
     );
   }
 
   void _rejectLocalOrder(int index) {
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text("Buyurtmani rad etish"),
-        content: Text("${_localRequests[index]['name']} ning buyurtmasini rad etishni tasdiqlaysizmi?"),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text("Bekor qilish"),
+      builder:
+          (context) => AlertDialog(
+            title: const Text("Buyurtmani rad etish"),
+            content: Text(
+              "${_localRequests[index]['name']} ning buyurtmasini rad etishni tasdiqlaysizmi?",
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text("Bekor qilish"),
+              ),
+              ElevatedButton(
+                onPressed: () {
+                  Navigator.pop(context);
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(
+                        "${_localRequests[index]['name']} buyurtmasi rad etildi",
+                      ),
+                    ),
+                  );
+                },
+                child: const Text("Rad etish"),
+              ),
+            ],
           ),
-          ElevatedButton(
-            onPressed: () {
-              Navigator.pop(context);
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text("${_localRequests[index]['name']} buyurtmasi rad etildi")),
-              );
-            },
-            child: const Text("Rad etish"),
-          ),
-        ],
-      ),
     );
   }
 
-  void _navigateToSetting(String setting) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text("$setting sozlamasiga o'tilmoqda...")),
-    );
+  void _navigateToSetting(Map<String, dynamic> setting) {
+    final type = setting["type"] ?? "navigation";
+    final title = setting["title"] ?? "";
+    final screen = setting["screen"] ?? "";
+
+    if (type == "settings" && title == "Ilova sozlamalari") {
+      setState(() {
+        _activeBottomContainer = "app_settings";
+      });
+    } else if (type == "navigation") {
+      // 🔹 MAVJUD SCREENLARGA O'TISH
+      switch (screen) {
+        case "profile":
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => EntrepreneurProfileScreen(),
+            ),
+          );
+          break;
+        case "car_info":
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => EntrepreneurCarInfoScreen(),
+            ),
+          );
+          break;
+        case "payment":
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => PaymentCardRegistrationScreen(),
+            ),
+          );
+          break;
+        case "help_screen":
+        // 🔹 YANGILANDI: help_screen.dart fayliga o'tish
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => HelpScreen(),
+          ),
+        );
+          break;
+        default:
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text("$title sahifasi tayyorlanmoqda...")),
+          );
+      }
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("$title sozlamasiga o'tilmoqda...")),
+      );
+    }
   }
 
-  void _logout() {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text("Chiqish"),
-        content: const Text("Ilovadan chiqishni tasdiqlaysizmi?"),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text("Bekor qilish"),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              Navigator.pop(context);
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text("Chiqish amalga oshirildi")),
-              );
-            },
-            child: const Text("Chiqish"),
-          ),
-        ],
-      ),
-    );
-  }
+  // void _logout() {
+  //   showDialog(
+  //     context: context,
+  //     builder:
+  //         (context) => AlertDialog(
+  //           title: const Text("Chiqish"),
+  //           content: const Text("Ilovadan chiqishni tasdiqlaysizmi?"),
+  //           actions: [
+  //             TextButton(
+  //               onPressed: () => Navigator.pop(context),
+  //               child: const Text("Bekor qilish"),
+  //             ),
+  //             ElevatedButton(
+  //               onPressed: () {
+  //                 Navigator.pop(context);
+  //                 ScaffoldMessenger.of(context).showSnackBar(
+  //                   const SnackBar(content: Text("Chiqish amalga oshirildi")),
+  //                 );
+  //               },
+  //               child: const Text("Chiqish"),
+  //             ),
+  //           ],
+  //         ),
+  //   );
+  // }
 }
