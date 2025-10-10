@@ -1,16 +1,20 @@
 import 'package:flutter/material.dart';
-import 'package:m_taksi/core/theme/colors.dart'; // Loyiha ranglari uchun
-import 'package:m_taksi/views/auth/entrepreneur/entrepreneur_car_info_screen.dart'; // Avtomobil ma'lumotlari ekrani
+import 'package:m_taksi/core/theme/colors.dart';
+import 'package:m_taksi/views/auth/entrepreneur/entrepreneur_car_info_screen.dart';
 
 class EntrepreneurProfileScreen extends StatefulWidget {
-  const EntrepreneurProfileScreen({super.key});
+  final bool isEditMode; // 🔹 YANGI: Tahrirlash rejimi
+
+  const EntrepreneurProfileScreen({
+    super.key,
+    this.isEditMode = false, // 🔹 Default: ro'yxatdan o'tish rejimi
+  });
 
   @override
   State<EntrepreneurProfileScreen> createState() => _EntrepreneurProfileScreenState();
 }
 
 class _EntrepreneurProfileScreenState extends State<EntrepreneurProfileScreen> {
-  // Form uchun controllerlar - har bir input maydoni uchun alohida controller
   final TextEditingController _companyNameController = TextEditingController();
   final TextEditingController _firstNameController = TextEditingController();
   final TextEditingController _lastNameController = TextEditingController();
@@ -19,16 +23,31 @@ class _EntrepreneurProfileScreenState extends State<EntrepreneurProfileScreen> {
   final TextEditingController _passwordController = TextEditingController();
   final TextEditingController _confirmPasswordController = TextEditingController();
 
-  // Parolni ko'rish holatlari - parolni yashirish/ko'rsatish uchun
   bool _showPassword = false;
   bool _showConfirmPassword = false;
-  
-  // Parol qo'yishni tanlash uchun checkbox holati
   bool _enablePassword = false;
 
   @override
+  void initState() {
+    super.initState();
+    // 🔹 YANGI: Agar tahrirlash rejimi bo'lsa, mavjud ma'lumotlarni yuklash
+    if (widget.isEditMode) {
+      _loadProfileData();
+    }
+  }
+
+  // 🔹 YANGI: Profil ma'lumotlarini yuklash (misol uchun)
+  void _loadProfileData() {
+    // Bu yerda API yoki local databasedan ma'lumotlarni yuklaysiz
+    _companyNameController.text = "Namuna Kompaniya";
+    _firstNameController.text = "Ali";
+    _lastNameController.text = "Valiyev";
+    _phoneController.text = "+998901234567";
+    _emailController.text = "ali@kompaniya.uz";
+  }
+
+  @override
   void dispose() {
-    // Controllerlarni tozalash - xotirani tozalash uchun
     _companyNameController.dispose();
     _firstNameController.dispose();
     _lastNameController.dispose();
@@ -39,9 +58,7 @@ class _EntrepreneurProfileScreenState extends State<EntrepreneurProfileScreen> {
     super.dispose();
   }
 
-  // Formni to'g'ri to'ldirilganligini tekshirish
   bool _isFormValid() {
-    // Agar parol qo'yish tanlangan bo'lsa, barcha maydonlarni tekshiramiz
     if (_enablePassword) {
       return _companyNameController.text.isNotEmpty &&
           _firstNameController.text.isNotEmpty &&
@@ -52,7 +69,6 @@ class _EntrepreneurProfileScreenState extends State<EntrepreneurProfileScreen> {
           _confirmPasswordController.text.isNotEmpty &&
           (_passwordController.text == _confirmPasswordController.text);
     }
-    // Agar parol qo'yish tanlanmagan bo'lsa, faqat asosiy maydonlarni tekshiramiz
     return _companyNameController.text.isNotEmpty &&
         _firstNameController.text.isNotEmpty &&
         _lastNameController.text.isNotEmpty &&
@@ -60,31 +76,44 @@ class _EntrepreneurProfileScreenState extends State<EntrepreneurProfileScreen> {
         _emailController.text.isNotEmpty;
   }
 
+  // 🔹 YANGI: Tugma bosilganda bajariladigan harakat
+  void _onSubmit() {
+    if (widget.isEditMode) {
+      // 🔹 Tahrirlash rejimi: Sozlamalarga qaytish
+      Navigator.pop(context);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Profil ma'lumotlari yangilandi")),
+      );
+    } else {
+      // 🔹 Ro'yxatdan o'tish rejimi: Keyingi ekranga o'tish
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => const EntrepreneurCarInfoScreen(),
+        ),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.primaryColor, // Asosiy fon rangi
-      
-      // APP BAR - ORQAGA QAYTISH TUGMASI
+      backgroundColor: AppColors.primaryColor,
       appBar: AppBar(
-        backgroundColor: Colors.transparent, // Shaffof fon
-        elevation: 0, // Soyani olib tashlash
+        backgroundColor: Colors.transparent,
+        elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.white), // Orqaga ikonkasi
-          onPressed: () => Navigator.pop(context), // Oldingi ekranga qaytish
+          icon: const Icon(Icons.arrow_back, color: Colors.white),
+          onPressed: () => Navigator.pop(context),
         ),
       ),
-      
       body: SingleChildScrollView(
-        padding: const EdgeInsets.symmetric(horizontal: 20), // Yon chetlardan padding
+        padding: const EdgeInsets.symmetric(horizontal: 20),
         child: Column(
           children: [
-            const SizedBox(height: 20), // Yuqoridan bo'sh joy
-            
-            // PROFIL RASMI VA SARLAVHA
+            const SizedBox(height: 20),
             Column(
               children: [
-                // Profil rasmi - Stack yordamida rasm va kamera tugmasini ustma-ust qo'yamiz
                 Stack(
                   alignment: Alignment.bottomRight,
                   children: [
@@ -93,31 +122,31 @@ class _EntrepreneurProfileScreenState extends State<EntrepreneurProfileScreen> {
                       height: 145,
                       decoration: const BoxDecoration(
                         shape: BoxShape.circle,
-                        color: Colors.grey, // Rasm yo'qligida fon rangi
+                        color: Colors.grey,
                       ),
-                      child: const Icon(Icons.business, size: 60), // Biznes ikonkasi
+                      child: const Icon(Icons.business, size: 60),
                     ),
-                    // Rasm qo'shish tugmasi
                     GestureDetector(
-                      onTap: _showImagePickerDialog, // Rasm tanlash dialogini ochish
+                      onTap: _showImagePickerDialog,
                       child: Container(
                         width: 40,
                         height: 40,
                         decoration: const BoxDecoration(
                           shape: BoxShape.circle,
-                          color: Colors.yellow, // Sariq rangli aylana
+                          color: Colors.yellow,
                         ),
-                        child: const Icon(Icons.camera_alt), // Kamera ikonkasi
+                        child: const Icon(Icons.camera_alt),
                       ),
                     ),
                   ],
                 ),
-                const SizedBox(height: 10), // Bo'sh joy
-                
-                // SARLAVHA MATNI
-                const Text(
-                  "Kompaniya profilingizni yarating",
-                  style: TextStyle(
+                const SizedBox(height: 10),
+                // 🔹 YANGI: Rejimga qarab sarlavha
+                Text(
+                  widget.isEditMode 
+                      ? "Profil ma'lumotlarini tahrirlash"
+                      : "Kompaniya profilingizni yarating",
+                  style: const TextStyle(
                     color: Colors.white,
                     fontSize: 18,
                     fontWeight: FontWeight.bold,
@@ -125,140 +154,117 @@ class _EntrepreneurProfileScreenState extends State<EntrepreneurProfileScreen> {
                 ),
               ],
             ),
-            const SizedBox(height: 30), // Bo'sh joy
-            
-            // MA'LUMOTLAR FORMASI
+            const SizedBox(height: 30),
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
               decoration: BoxDecoration(
-                color: Colors.white, // Oq fon
-                borderRadius: BorderRadius.circular(10), // Yumaloq burchaklar
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(10),
               ),
               child: Column(
                 children: [
-                  // Kompaniya nomi maydoni
                   _buildInputField("Kompaniya nomi", controller: _companyNameController),
-                  // Foydalanuvchi ismi maydoni
                   _buildInputField("Foydalanuvchi ismi", controller: _firstNameController),
-                  // Foydalanuvchi familiyasi maydoni
                   _buildInputField("Foydalanuvchi familiyasi", controller: _lastNameController),
-                  // Telefon raqami maydoni
                   _buildInputField("Telefon raqamingiz", controller: _phoneController),
-                  // Email maydoni
                   _buildInputField("Email", controller: _emailController),
-                  const SizedBox(height: 10), // Bo'sh joy
+                  const SizedBox(height: 10),
                   
-                  // PAROL QO'YISHNI TANLASH CHECKBOXI
-                  Row(
-                    children: [
-                      Checkbox(
-                        value: _enablePassword,
-                        onChanged: (value) {
+                  // 🔹 YANGI: Tahrirlash rejimida parol qismini yashirish
+                  if (!widget.isEditMode) ...[
+                    Row(
+                      children: [
+                        Checkbox(
+                          value: _enablePassword,
+                          onChanged: (value) {
+                            setState(() {
+                              _enablePassword = value!;
+                              if (!_enablePassword) {
+                                _passwordController.clear();
+                                _confirmPasswordController.clear();
+                              }
+                            });
+                          },
+                        ),
+                        const Text("Parol qo'yishni xoxlaysizmi?"),
+                      ],
+                    ),
+                    const SizedBox(height: 10),
+                    
+                    if (_enablePassword) ...[
+                      _buildPasswordField("Parolni kiriting", 
+                        controller: _passwordController,
+                        showPassword: _showPassword,
+                        onToggleVisibility: () {
                           setState(() {
-                            _enablePassword = value!;
-                            if (!_enablePassword) {
-                              // Agar parol qo'yish bekor qilinsa, parollarni tozalash
-                              _passwordController.clear();
-                              _confirmPasswordController.clear();
-                            }
+                            _showPassword = !_showPassword;
                           });
                         },
                       ),
-                      const Text("Parol qo'yishni xoxlaysizmi?"),
-                    ],
-                  ),
-                  const SizedBox(height: 10), // Bo'sh joy
-                  
-                  // FAQAT CHECKBOX TANLANGAN BO'LSA PAROL MAYDONLARINI KO'RSATISH
-                  if (_enablePassword) ...[
-                    // Parol maydoni
-                    _buildPasswordField("Parolni kiriting", 
-                      controller: _passwordController,
-                      showPassword: _showPassword,
-                      onToggleVisibility: () {
-                        setState(() {
-                          _showPassword = !_showPassword; // Parolni ko'rsatish/yashirish
-                        });
-                      },
-                    ),
-                    // Parolni takrorlash maydoni
-                    _buildPasswordField("Parolni takrorlang", 
-                      controller: _confirmPasswordController,
-                      showPassword: _showConfirmPassword,
-                      onToggleVisibility: () {
-                        setState(() {
-                          _showConfirmPassword = !_showConfirmPassword; // Parolni ko'rsatish/yashirish
-                        });
-                      },
-                    ),
-                    // PAROLLAR MOS KELMASA XABAR
-                    if (_passwordController.text.isNotEmpty && 
-                        _confirmPasswordController.text.isNotEmpty &&
-                        _passwordController.text != _confirmPasswordController.text)
-                      const Text(
-                        "Parollar mos kelmadi!",
-                        style: TextStyle(color: Colors.red), // Qizil rangda xabar
+                      _buildPasswordField("Parolni takrorlang", 
+                        controller: _confirmPasswordController,
+                        showPassword: _showConfirmPassword,
+                        onToggleVisibility: () {
+                          setState(() {
+                            _showConfirmPassword = !_showConfirmPassword;
+                          });
+                        },
                       ),
+                      if (_passwordController.text.isNotEmpty && 
+                          _confirmPasswordController.text.isNotEmpty &&
+                          _passwordController.text != _confirmPasswordController.text)
+                        const Text(
+                          "Parollar mos kelmadi!",
+                          style: TextStyle(color: Colors.red),
+                        ),
+                    ],
                   ],
                 ],
               ),
             ),
-            const SizedBox(height: 30), // Bo'sh joy
+            const SizedBox(height: 30),
             
-            // TASDIQLASH TUGMASI
+            // 🔹 YANGI: Rejimga qarab tugma matni
             SizedBox(
-              width: 315, // Tugma eni
-              height: 50, // Tugma balandligi
+              width: 315,
+              height: 50,
               child: ElevatedButton(
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.white, // Oq fon
-                  foregroundColor: AppColors.txtColor, // Matn rangi
+                  backgroundColor: Colors.white,
+                  foregroundColor: AppColors.txtColor,
                   shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(24), // Yumaloq burchaklar
+                    borderRadius: BorderRadius.circular(24),
                   ),
                 ),
-                onPressed: _isFormValid() ? () {
-                  // Form to'g'ri to'ldirilgan bo'lsa, avtomobil ma'lumotlari ekraniga o'tamiz
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => const EntrepreneurCarInfoScreen(),
-                    ),
-                  );
-                } : null, // Form to'g'ri to'ldirilmagan bo'lsa tugma faol bo'lmaydi
-                child: const Text(
-                  "Tasdiqlash",
-                  style: TextStyle(fontSize: 20),
+                onPressed: _isFormValid() ? _onSubmit : null,
+                child: Text(
+                  widget.isEditMode ? "Saqlash" : "Tasdiqlash", // 🔹 Tugma matni
+                  style: const TextStyle(fontSize: 20),
                 ),
               ),
             ),
-            const SizedBox(height: 20), // Bo'sh joy
+            const SizedBox(height: 20),
           ],
         ),
       ),
     );
   }
 
-  // RASM TANLASH DIALOGI
   void _showImagePickerDialog() {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
         title: const Text("Rasm tanlang"),
         actions: [
-          // Galereyadan rasm tanlash tugmasi
           TextButton(
             onPressed: () {
-              Navigator.pop(ctx); // Dialogni yopish
-              // Bu yerda galereyadan rasm tanlash logikasi bo'lishi kerak
+              Navigator.pop(ctx);
             },
             child: const Text("Galereya"),
           ),
-          // Kamera orqali rasm olish tugmasi
           TextButton(
             onPressed: () {
-              Navigator.pop(ctx); // Dialogni yopish
-              // Bu yerda kamera orqali rasm olish logikasi bo'lishi kerak
+              Navigator.pop(ctx);
             },
             child: const Text("Kamera"),
           ),
@@ -267,30 +273,28 @@ class _EntrepreneurProfileScreenState extends State<EntrepreneurProfileScreen> {
     );
   }
 
-  // ODDIY INPUT MAYDONI UCHUN WIDGET
   Widget _buildInputField(String hint, {required TextEditingController controller}) {
     return Container(
-      margin: const EdgeInsets.only(bottom: 15), // Pastdan joy
-      height: 50, // Balandligi
+      margin: const EdgeInsets.only(bottom: 15),
+      height: 50,
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(10), // Yumaloq burchaklar
-        border: Border.all(color: Colors.grey), // Kulrang chegara
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: Colors.grey),
       ),
       child: TextField(
-        controller: controller, // Controller biriktirish
+        controller: controller,
         decoration: InputDecoration(
-          hintText: hint, // Yorliq matni
-          border: InputBorder.none, // Standart chegarasiz
-          contentPadding: const EdgeInsets.symmetric(horizontal: 15), // Ichki padding
+          hintText: hint,
+          border: InputBorder.none,
+          contentPadding: const EdgeInsets.symmetric(horizontal: 15),
         ),
         onChanged: (value) {
-          setState(() {}); // Har bir o'zgarishda UI ni yangilash
+          setState(() {});
         },
       ),
     );
   }
 
-  // PAROL INPUT MAYDONI UCHUN WIDGET
   Widget _buildPasswordField(
     String hint, {
     required TextEditingController controller,
@@ -298,29 +302,29 @@ class _EntrepreneurProfileScreenState extends State<EntrepreneurProfileScreen> {
     required VoidCallback onToggleVisibility,
   }) {
     return Container(
-      margin: const EdgeInsets.only(bottom: 15), // Pastdan joy
-      height: 50, // Balandligi
+      margin: const EdgeInsets.only(bottom: 15),
+      height: 50,
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(10), // Yumaloq burchaklar
-        border: Border.all(color: Colors.grey), // Kulrang chegara
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: Colors.grey),
       ),
       child: TextField(
-        controller: controller, // Controller biriktirish
-        obscureText: !showPassword, // Parolni yashirish/ko'rsatish
+        controller: controller,
+        obscureText: !showPassword,
         decoration: InputDecoration(
-          hintText: hint, // Yorliq matni
-          border: InputBorder.none, // Standart chegarasiz
-          contentPadding: const EdgeInsets.symmetric(horizontal: 15), // Ichki padding
-          suffixIcon: IconButton( // Ko'z ikonkasi
+          hintText: hint,
+          border: InputBorder.none,
+          contentPadding: const EdgeInsets.symmetric(horizontal: 15),
+          suffixIcon: IconButton(
             icon: Icon(
               showPassword ? Icons.visibility : Icons.visibility_off,
               color: Colors.grey,
             ),
-            onPressed: onToggleVisibility, // Bosilganda holatni o'zgartirish
+            onPressed: onToggleVisibility,
           ),
         ),
         onChanged: (value) {
-          setState(() {}); // Har bir o'zgarishda UI ni yangilash
+          setState(() {});
         },
       ),
     );

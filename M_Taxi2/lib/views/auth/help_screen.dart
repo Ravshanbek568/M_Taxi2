@@ -82,9 +82,9 @@ class _HelpScreenState extends State<HelpScreen> {
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
-          // 🔹 Qidiruv maydoni
-          _buildSearchField(),
-          const SizedBox(height: 20),
+          // // 🔹 Qidiruv maydoni
+          // _buildSearchField(),
+          // const SizedBox(height: 20),
 
           // 🔹 Tezkor yordam bo'limi
           _buildQuickHelpSection(),
@@ -108,33 +108,33 @@ class _HelpScreenState extends State<HelpScreen> {
       ),
     );
   }
-
-  Widget _buildSearchField() {
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.1),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: TextField(
-        decoration: InputDecoration(
-          hintText: "Qidirish...",
-          prefixIcon: const Icon(Icons.search, color: Colors.grey),
-          border: InputBorder.none,
-          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-        ),
-        onChanged: (value) {
-          // Qidiruv funksiyasi
-        },
-      ),
-    );
-  }
+// // QIDIRUV FUNKSIYASI 
+//   Widget _buildSearchField() {
+//     return Container(
+//       decoration: BoxDecoration(
+//         color: Colors.white,
+//         borderRadius: BorderRadius.circular(12),
+//         boxShadow: [
+//           BoxShadow(
+//             color: Colors.black.withValues(alpha: 0.1),
+//             blurRadius: 8,
+//             offset: const Offset(0, 2),
+//           ),
+//         ],
+//       ),
+//       child: TextField(
+//         decoration: InputDecoration(
+//           hintText: "Qidirish...",
+//           prefixIcon: const Icon(Icons.search, color: Colors.grey),
+//           border: InputBorder.none,
+//           contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+//         ),
+//         onChanged: (value) {
+//           // Qidiruv funksiyasi
+//         },
+//       ),
+//     );
+//   }
 
   Widget _buildQuickHelpSection() {
     return Column(
@@ -152,10 +152,10 @@ class _HelpScreenState extends State<HelpScreen> {
         GridView.count(
           shrinkWrap: true,
           physics: const NeverScrollableScrollPhysics(),
-          crossAxisCount: 2,
+          crossAxisCount: 2,//qatorlar soni
           crossAxisSpacing: 12,
           mainAxisSpacing: 12,
-          childAspectRatio: 1.5,
+          childAspectRatio: 1.2, //bo'yiga katalig
           children: [
             _buildQuickHelpCard(
               "Buyurtmalar",
@@ -440,38 +440,38 @@ class _HelpScreenState extends State<HelpScreen> {
                   ),
                 ),
                 const SizedBox(width: 12),
-                Expanded(
-                  child: ElevatedButton.icon(
-                    onPressed: _sendEmail,
-                    icon: const Icon(Icons.email, size: 20),
-                    label: const Text("Email"),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.blue,
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(vertical: 12),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                    ),
-                  ),
-                ),
+                // Expanded(
+                //   child: ElevatedButton.icon(
+                //     onPressed: _sendEmail,
+                //     icon: const Icon(Icons.email, size: 20),
+                //     label: const Text("Email"),
+                //     style: ElevatedButton.styleFrom(
+                //       backgroundColor: Colors.blue,
+                //       foregroundColor: Colors.white,
+                //       padding: const EdgeInsets.symmetric(vertical: 12),
+                //       shape: RoundedRectangleBorder(
+                //         borderRadius: BorderRadius.circular(8),
+                //       ),
+                //     ),
+                //   ),
+                // ),
               ],
             ),
             const SizedBox(height: 12),
-            ElevatedButton.icon(
-              onPressed: _openLiveChat,
-              icon: const Icon(Icons.chat, size: 20),
-              label: const Text("Onlayn Chat"),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.orange,
-                foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(vertical: 12),
-                minimumSize: const Size(double.infinity, 0),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8),
-                ),
-              ),
-            ),
+            // ElevatedButton.icon(
+            //   onPressed: _openLiveChat,
+            //   icon: const Icon(Icons.chat, size: 20),
+            //   label: const Text("Onlayn Chat"),
+            //   style: ElevatedButton.styleFrom(
+            //     backgroundColor: Colors.orange,
+            //     foregroundColor: Colors.white,
+            //     padding: const EdgeInsets.symmetric(vertical: 12),
+            //     minimumSize: const Size(double.infinity, 0),
+            //     shape: RoundedRectangleBorder(
+            //       borderRadius: BorderRadius.circular(8),
+            //     ),
+            //   ),
+            // ),
           ],
         ),
       ),
@@ -631,25 +631,25 @@ class _HelpScreenState extends State<HelpScreen> {
     );
   }
 
-  void _sendEmail() {
-    // Email yuborish funksiyasi
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text("Email yuborilmoqda..."),
-        backgroundColor: Colors.blue,
-      ),
-    );
-  }
+  // void _sendEmail() {
+  //   // Email yuborish funksiyasi
+  //   ScaffoldMessenger.of(context).showSnackBar(
+  //     const SnackBar(
+  //       content: Text("Email yuborilmoqda..."),
+  //       backgroundColor: Colors.blue,
+  //     ),
+  //   );
+  // }
 
-  void _openLiveChat() {
-    // Onlayn chat funksiyasi
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text("Onlayn chat ochilmoqda..."),
-        backgroundColor: Colors.orange,
-      ),
-    );
-  }
+  // void _openLiveChat() {
+  //   // Onlayn chat funksiyasi
+  //   ScaffoldMessenger.of(context).showSnackBar(
+  //     const SnackBar(
+  //       content: Text("Onlayn chat ochilmoqda..."),
+  //       backgroundColor: Colors.orange,
+  //     ),
+  //   );
+  // }
 }
 
 class FAQItem {

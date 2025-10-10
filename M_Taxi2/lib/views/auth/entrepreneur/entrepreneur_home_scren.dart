@@ -2734,115 +2734,208 @@ class _EntrepreneurHomeScreenState extends State<EntrepreneurHomeScreen> {
   }
 
   Widget _buildLocalTaxiPanel() {
-    if (_mode != "Mahalliy Taxi") return const SizedBox.shrink();
+  if (_mode != "Mahalliy Taxi") return const SizedBox.shrink();
 
-    return Align(
-      alignment: Alignment.bottomCenter,
-      child: Container(
-        height: 320,
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceAround,
+  return Align(
+    alignment: Alignment.bottomCenter,
+    child: Container(
+      height: 360,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.15),
+            blurRadius: 12,
+            offset: const Offset(0, -3),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // 🔹 Holat tugmalari (scrollable)
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: Row(
               children: [
-                _statusButton("Bo'sh"),
-                _statusButton("Band"),
-                _statusButton("Navbatda"),
-                _statusButton("Yo'nalishda"),
+                _statusButton("Bo'sh", Icons.check_circle_outline, Colors.green),
+                const SizedBox(width: 8),
+                _statusButton("Band", Icons.block, Colors.redAccent),
+                const SizedBox(width: 8),
+                _statusButton("Navbatda", Icons.access_time, Colors.orange),
+                const SizedBox(width: 8),
+                _statusButton("Yo'nalishda", Icons.directions_car, Colors.blue),
               ],
             ),
-            const SizedBox(height: 12),
-            const Text(
-              "📍 Yaqin mijozlar:",
-              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+          ),
+
+          const SizedBox(height: 14),
+          const Divider(height: 1, thickness: 1),
+
+          const SizedBox(height: 10),
+          const Text(
+            "📍 Yaqin mijozlar",
+            style: TextStyle(
+              fontWeight: FontWeight.bold,
+              fontSize: 17,
+              color: Colors.black87,
             ),
-            const SizedBox(height: 8),
-            Expanded(
-              child: ListView.builder(
-                itemCount: _localRequests.length,
-                itemBuilder: (context, index) {
-                  final req = _localRequests[index];
-                  return Card(
-                    margin: const EdgeInsets.symmetric(vertical: 4),
-                    child: ListTile(
-                      leading: CircleAvatar(
-                        backgroundColor: Colors.blue.shade100,
-                        child: Text(
-                          "${index + 1}",
-                          style: const TextStyle(fontWeight: FontWeight.bold),
+          ),
+          const SizedBox(height: 8),
+
+          // 🔹 Mijozlar ro‘yxati
+          Expanded(
+  child: _localRequests.isEmpty
+      ? const Center(
+          child: Text(
+            "Hozircha yaqin mijozlar yo‘q.",
+            style: TextStyle(color: Colors.grey),
+          ),
+        )
+      : ListView.builder(
+          padding: const EdgeInsets.only(bottom: 110), // 🔹 pastga joy qo‘shildi
+          itemCount: _localRequests.length,
+          itemBuilder: (context, index) {
+            final req = _localRequests[index];
+            return Container(
+              margin: const EdgeInsets.symmetric(vertical: 6),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(16),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.08),
+                    blurRadius: 10,
+                    offset: const Offset(0, 2),
+                  ),
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.05),
+                    blurRadius: 6,
+                    spreadRadius: 1,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
+                border: Border.all(
+                  color: Colors.grey.withValues(alpha: 0.2),
+                  width: 1,
+                ),
+              ),
+              child: ListTile(
+                leading: CircleAvatar(
+                  radius: 22,
+                  backgroundColor: Colors.blue.shade100,
+                  child: Text(
+                    "${index + 1}",
+                    style: const TextStyle(
+                      fontWeight: FontWeight.bold,
+                      color: Colors.black87,
+                    ),
+                  ),
+                ),
+                title: Text(
+                  req["name"]?.toString() ?? "Noma'lum mijoz",
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w600,
+                    fontSize: 15,
+                  ),
+                ),
+                subtitle: Text(
+                  "${req["location"] ?? "Manzil noma'lum"} • ${req["distance"] ?? "Masofa noma'lum"}",
+                  style: const TextStyle(color: Colors.black54),
+                ),
+                trailing: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    ElevatedButton(
+                      onPressed: () => _acceptLocalOrder(index),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.green.shade600,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 12, vertical: 8),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10),
                         ),
                       ),
-                      title: Text(
-                        req["name"]?.toString() ?? "Noma'lum mijoz",
-                        style: const TextStyle(fontWeight: FontWeight.w600),
-                      ),
-                      subtitle: Text(
-                        "${req["location"]?.toString() ?? "Noma'lum manzil"} • ${req["distance"]?.toString() ?? "Noma'lum masofa"}",
-                      ),
-                      trailing: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          ElevatedButton(
-                            onPressed: () {
-                              _acceptLocalOrder(index);
-                            },
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: Colors.green,
-                              foregroundColor: Colors.white,
-                            ),
-                            child: const Text("Qabul"),
-                          ),
-                          const SizedBox(width: 4),
-                          ElevatedButton(
-                            onPressed: () {
-                              _rejectLocalOrder(index);
-                            },
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: Colors.red,
-                              foregroundColor: Colors.white,
-                            ),
-                            child: const Text("Rad"),
-                          ),
-                        ],
-                      ),
+                      child: const Text("Qabul"),
                     ),
-                  );
-                },
+                    const SizedBox(width: 6),
+                    ElevatedButton(
+                      onPressed: () => _rejectLocalOrder(index),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.redAccent,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 12, vertical: 8),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                      ),
+                      child: const Text("Rad"),
+                    ),
+                  ],
+                ),
               ),
-            ),
-          ],
+            );
+          },
         ),
-      ),
-    );
-  }
+)
 
-  Widget _statusButton(String status) {
-    final isActive = _localStatus == status;
-    return GestureDetector(
-      onTap: () {
-        setState(() {
-          _localStatus = status;
-        });
-      },
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-        decoration: BoxDecoration(
-          color: isActive ? Colors.blue.shade600 : Colors.grey.shade100,
-          borderRadius: BorderRadius.circular(20),
-        ),
-        child: Text(
-          status,
-          style: TextStyle(color: isActive ? Colors.white : Colors.black),
-        ),
+        ],
       ),
-    );
-  }
+    ),
+  );
+}
+
+Widget _statusButton(String status, IconData icon, Color color) {
+  final isActive = _localStatus == status;
+  return GestureDetector(
+    onTap: () {
+      setState(() {
+        _localStatus = status;
+      });
+    },
+    child: AnimatedContainer(
+      duration: const Duration(milliseconds: 250),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+      margin: const EdgeInsets.only(right: 4),
+      decoration: BoxDecoration(
+        color: isActive ? color : Colors.grey.shade100,
+        borderRadius: BorderRadius.circular(24),
+        boxShadow: isActive
+            ? [
+                BoxShadow(
+                  color: color.withValues(alpha: 0.4),
+                  blurRadius: 8,
+                  offset: const Offset(0, 3),
+                )
+              ]
+            : [],
+      ),
+      child: Row(
+        children: [
+          Icon(
+            icon,
+            size: 18,
+            color: isActive ? Colors.white : Colors.black54,
+          ),
+          const SizedBox(width: 6),
+          Text(
+            status,
+            style: TextStyle(
+              color: isActive ? Colors.white : Colors.black87,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ],
+      ),
+    ),
+  );
+}
+
+
 
   // ========== ASOSIY BUILD METODI ==========
 

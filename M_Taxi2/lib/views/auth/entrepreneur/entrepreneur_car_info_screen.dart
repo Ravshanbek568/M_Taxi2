@@ -8,7 +8,12 @@ import 'package:m_taksi/views/auth/entrepreneur/payment_card_registration_screen
 
 /// Tadbirkor uchun avtomobil ma'lumotlarini kiritish ekrani
 class EntrepreneurCarInfoScreen extends StatefulWidget {
-  const EntrepreneurCarInfoScreen({super.key});
+  final bool isEditMode; // 🔹 YANGI: Tahrirlash rejimi
+
+  const EntrepreneurCarInfoScreen({
+    super.key,
+    this.isEditMode = false, // 🔹 Default: ro'yxatdan o'tish rejimi
+  });
 
   @override
   State<EntrepreneurCarInfoScreen> createState() => _EntrepreneurCarInfoScreenState();
@@ -58,6 +63,10 @@ class _EntrepreneurCarInfoScreenState extends State<EntrepreneurCarInfoScreen> {
     super.initState();
     // Dastur ishga tushganda kameraga ruxsat so'raymiz
     _requestCameraPermission();
+    // 🔹 YANGI: Agar tahrirlash rejimi bo'lsa, mavjud ma'lumotlarni yuklash
+    if (widget.isEditMode) {
+      _loadCarData();
+    }
   }
 
   @override
@@ -68,6 +77,15 @@ class _EntrepreneurCarInfoScreenState extends State<EntrepreneurCarInfoScreen> {
     _carColorController.dispose();
     _fuelTypeController.dispose();
     super.dispose();
+  }
+
+  // 🔹 YANGI: Avtomobil ma'lumotlarini yuklash (misol uchun)
+  void _loadCarData() {
+    // Bu yerda API yoki local databasedan ma'lumotlarni yuklaysiz
+    _carModelController.text = "Chevrolet Lacetti";
+    _carNumberController.text = "01 A 123 AA";
+    _carColorController.text = "Oq";
+    _fuelTypeController.text = "Benzin";
   }
 
   /// Kameraga kirish ruxsatini so'rash
@@ -253,16 +271,27 @@ class _EntrepreneurCarInfoScreenState extends State<EntrepreneurCarInfoScreen> {
     );
   }
 
-  /// Tasdiqlash tugmasi bosilganda ishlaydigan metod
-  void _onConfirmPressed() {
+  // 🔹 YANGI: Tugma bosilganda bajariladigan harakat
+  void _onSubmit() {
     if (_isFormValid()) {
-      // PaymentCardRegistrationScreen sahifasiga o'tamiz
-      Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (context) => const PaymentCardRegistrationScreen(),
-        ),
-      );
+      if (widget.isEditMode) {
+        // 🔹 Tahrirlash rejimi: Sozlamalarga qaytish
+        Navigator.pop(context); // 🔹 Faqat avtomobil sahifasini yopish
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text("Avtomobil ma'lumotlari yangilandi"),
+            backgroundColor: Colors.green,
+          ),
+        );
+      } else {
+        // 🔹 Ro'yxatdan o'tish rejimi: Keyingi ekranga o'tish
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => const PaymentCardRegistrationScreen(),
+          ),
+        );
+      }
     } else {
       // Agar forma to'liq to'ldirilmagan bo'lsa
       ScaffoldMessenger.of(context).showSnackBar(
@@ -284,6 +313,13 @@ class _EntrepreneurCarInfoScreenState extends State<EntrepreneurCarInfoScreen> {
           icon: const Icon(Icons.arrow_back, color: Colors.white),
           onPressed: () => Navigator.pop(context),
         ),
+        // 🔹 YANGI: Rejimga qarab sarlavha
+        title: Text(
+          widget.isEditMode 
+              ? "Avtomobil ma'lumotlarini tahrirlash"
+              : "Avtomobil ma'lumotlari",
+          style: const TextStyle(color: Colors.white),
+        ),
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.symmetric(horizontal: 20),
@@ -303,10 +339,12 @@ class _EntrepreneurCarInfoScreenState extends State<EntrepreneurCarInfoScreen> {
             const SizedBox(height: 10),
             
             // Sarlavha
-            const Center(
+            Center(
               child: Text(
-                "Avtomobil ma'lumotlarini kiriting",
-                style: TextStyle(
+                widget.isEditMode
+                    ? "Avtomobil ma'lumotlarini yangilang"
+                    : "Avtomobil ma'lumotlarini kiriting",
+                style: const TextStyle(
                   color: Colors.white,
                   fontSize: 18,
                   fontWeight: FontWeight.bold,
@@ -363,10 +401,12 @@ class _EntrepreneurCarInfoScreenState extends State<EntrepreneurCarInfoScreen> {
             const SizedBox(height: 20),
             
             // Hujjatlar sarlavhasi
-            const Center(
+            Center(
               child: Text(
-                "Avtomobil hujjatlarini kiriting",
-                style: TextStyle(
+                widget.isEditMode
+                    ? "Avtomobil hujjatlarini yangilang"
+                    : "Avtomobil hujjatlarini kiriting",
+                style: const TextStyle(
                   color: Colors.white,
                   fontSize: 18,
                 ),
@@ -405,11 +445,11 @@ class _EntrepreneurCarInfoScreenState extends State<EntrepreneurCarInfoScreen> {
                       borderRadius: BorderRadius.circular(24),
                     ),
                   ),
-                  // Yangilangan qism: _onConfirmPressed metodini chaqiramiz
-                  onPressed: _isFormValid() ? _onConfirmPressed : null,
-                  child: const Text(
-                    "Tasdiqlash",
-                    style: TextStyle(fontSize: 20),
+                  // 🔹 YANGILANDI: _onSubmit metodini chaqiramiz
+                  onPressed: _isFormValid() ? _onSubmit : null,
+                  child: Text(
+                    widget.isEditMode ? "Saqlash" : "Tasdiqlash", // 🔹 Tugma matni
+                    style: const TextStyle(fontSize: 20),
                   ),
                 ),
               ),
